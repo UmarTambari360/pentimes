@@ -1,0 +1,145 @@
+#commented out as noted to be obsolete
+#version: '3.9'
+
+# ──────────────────────────────────────────────────────────────────
+# Pen Times Magazine — Development Docker Compose
+#
+# Services:
+#   web      → Next.js 15 frontend        (port 3000)
+#   api      → Express + GraphQL Yoga API (port 4000)
+#   postgres → PostgreSQL 16              (port 5432)
+#   redis    → Redis 7                    (port 6379)
+#
+# WHY specific image tags and not 'latest':
+#   'latest' can silently pull breaking changes on rebuild.
+#   Pinning guarantees identical environments across all machines.
+# ──────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16.3-alpine3.20
+    container_name: pentimes_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - pentimes_network
+
+  # ── Redis ───────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2.5-alpine3.20
+    container_name: pentimes_redis
+    restart: unless-stopped
+    # AOF persistence: survive container restarts without data loss
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - pentimes_network
+
+  # ── API ─────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    container_name: pentimes_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      API_PORT: ${API_PORT:-4000}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages/shared:/app/packages/shared
+      # Prevent host node_modules from overwriting container's
+      - api_node_modules:/app/apps/api/node_modules
+      - shared_node_modules:/app/packages/shared/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pentimes_network
+
+  # ── Web ─────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+    container_name: pentimes_web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://api:4000
+      WEB_PORT: ${WEB_PORT:-3000}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages/shared:/app/packages/shared
+      - web_node_modules:/app/apps/web/node_modules
+      - web_next_cache:/app/apps/web/.next
+    depends_on:
+      - api
+    networks:
+      - pentimes_network
+
+# ── Named Volumes ───────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  api_node_modules:
+    driver: local
+  shared_node_modules:
+    driver: local
+  web_node_modules:
+    driver: local
+  web_next_cache:
+    driver: local
+
+# ── Networks ────────────────────────────────────────────────────
+networks:
+  pentimes_network:
+    driver: bridge
+    name: pentimes_network

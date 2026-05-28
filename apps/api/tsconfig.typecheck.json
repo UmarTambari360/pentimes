@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    //"rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@pentimes/shared": ["../../packages/shared/src/index.ts"],
+      "@pentimes/shared/*": ["../../packages/shared/src/*"]
+    },
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"]
+}

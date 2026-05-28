@@ -1,0 +1,387 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────
+   Pen Times Magazine — Design Tokens
+   Editorial palette: ink navy + newsprint cream + amber
+   ───────────────────────────────────────────── */
+
+@layer base {
+    :root {
+        /* Ink scale — deep navy approaching black */
+        --ink: 220 40% 8%;
+        --ink-50: 220 30% 96%;
+        --ink-100: 220 25% 92%;
+        --ink-200: 220 20% 80%;
+        --ink-300: 220 18% 66%;
+        --ink-400: 220 16% 52%;
+        --ink-500: 220 18% 38%;
+        --ink-600: 220 22% 28%;
+        --ink-700: 220 30% 20%;
+        --ink-800: 220 36% 13%;
+        --ink-900: 220 40% 8%;
+
+        /* Amber accent — warm editorial gold */
+        --amber: 38 92% 50%;
+        --amber-50: 44 100% 96%;
+        --amber-100: 44 96% 89%;
+        --amber-200: 43 95% 76%;
+        --amber-300: 41 94% 62%;
+        --amber-400: 39 92% 55%;
+        --amber-500: 38 92% 50%;
+        --amber-600: 34 87% 44%;
+        --amber-700: 30 82% 36%;
+
+        /* Paper — warm newsprint tones */
+        --paper: 44 30% 97%;
+        --paper-warm: 40 35% 93%;
+        --paper-cool: 220 15% 94%;
+
+        /* shadcn semantic tokens — light mode */
+        --background: 44 30% 97%;
+        --foreground: 220 40% 8%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 220 40% 8%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 220 40% 8%;
+
+        --primary: 220 40% 8%;
+        --primary-foreground: 44 30% 97%;
+
+        --secondary: 44 30% 93%;
+        --secondary-foreground: 220 40% 8%;
+
+        --muted: 220 15% 94%;
+        --muted-foreground: 220 16% 46%;
+
+        --accent: 38 92% 50%;
+        --accent-foreground: 220 40% 8%;
+
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+
+        --border: 220 15% 88%;
+        --input: 220 15% 88%;
+        --ring: 38 92% 50%;
+
+        --success: 142 72% 42%;
+        --warning: 38 92% 50%;
+        --info: 210 80% 52%;
+
+        --radius: 0.375rem;
+    }
+
+    .dark {
+        --background: 220 40% 7%;
+        --foreground: 44 30% 94%;
+
+        --card: 220 35% 10%;
+        --card-foreground: 44 30% 94%;
+
+        --popover: 220 35% 10%;
+        --popover-foreground: 44 30% 94%;
+
+        --primary: 44 30% 94%;
+        --primary-foreground: 220 40% 7%;
+
+        --secondary: 220 30% 16%;
+        --secondary-foreground: 44 30% 94%;
+
+        --muted: 220 30% 16%;
+        --muted-foreground: 220 15% 60%;
+
+        --accent: 38 92% 50%;
+        --accent-foreground: 220 40% 7%;
+
+        --destructive: 0 72% 50%;
+        --destructive-foreground: 0 0% 100%;
+
+        --border: 220 25% 20%;
+        --input: 220 25% 20%;
+        --ring: 38 92% 50%;
+
+        --ink: 220 30% 94%;
+        --paper: 220 40% 7%;
+        --paper-warm: 220 35% 10%;
+    }
+
+    * {
+        @apply border-border;
+    }
+
+    html {
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        @apply bg-background text-foreground font-sans;
+        font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    }
+
+    /* ── Typographic defaults ── */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-serif tracking-tight;
+        font-feature-settings: "kern" 1, "liga" 1;
+    }
+
+    p {
+        @apply leading-relaxed;
+    }
+
+    /* ── Selection ── */
+    ::selection {
+        background-color: hsl(var(--amber) / 0.25);
+        color: hsl(var(--foreground));
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: hsl(var(--muted));
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: hsl(var(--ink-400));
+        border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--ink-600));
+    }
+}
+
+@layer components {
+
+    /* ── Focus ring ── */
+    .focus-ring {
+        @apply outline-none ring-2 ring-amber-500 ring-offset-2 ring-offset-background;
+    }
+
+    /* ── Prose article content ── */
+    .article-prose {
+        @apply text-body leading-[1.8] text-foreground;
+    }
+
+    .article-prose h2 {
+        @apply text-headline-lg font-serif mt-10 mb-4 text-foreground;
+    }
+
+    .article-prose h3 {
+        @apply text-headline font-serif mt-8 mb-3 text-foreground;
+    }
+
+    .article-prose p {
+        @apply mb-6 text-body;
+    }
+
+    .article-prose blockquote {
+        @apply border-l-4 border-amber-500 pl-6 my-8 italic text-muted-foreground text-body-lg;
+    }
+
+    .article-prose a {
+        @apply text-amber-600 underline decoration-amber-500/50 underline-offset-2 hover:decoration-amber-500;
+    }
+
+    .article-prose img {
+        @apply rounded-md my-8 w-full;
+    }
+
+    .article-prose ul,
+    .article-prose ol {
+        @apply mb-6 pl-6;
+    }
+
+    .article-prose li {
+        @apply mb-2;
+    }
+
+    /* ── Breaking news ticker ── */
+    .ticker-wrap {
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    .ticker-content {
+        display: inline-block;
+        animation: ticker-scroll 40s linear infinite;
+    }
+
+    .ticker-content:hover {
+        animation-play-state: paused;
+    }
+
+    /* ── Section rule ── */
+    .section-rule {
+        @apply border-t-2 border-foreground mb-6 pt-4;
+    }
+
+    /* ── Hover lift ── */
+    .hover-lift {
+        @apply transition-transform duration-200 ease-out hover:-translate-y-0.5;
+    }
+}
+
+@layer utilities {
+
+    /* ── Text balance ── */
+    .text-balance {
+        text-wrap: balance;
+    }
+
+    .text-pretty {
+        text-wrap: pretty;
+    }
+
+    /* ── Clip text ── */
+    .text-gradient {
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* ── Drag none ── */
+    .no-drag {
+        -webkit-user-drag: none;
+        user-select: none;
+    }
+}
+
+/* ── Animations ── */
+@keyframes ticker-scroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-in-left {
+    from {
+        opacity: 0;
+        transform: translateX(-16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-fade-in {
+    animation: fade-in 0.4s ease-out forwards;
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.animate-slide-in-left {
+    animation: slide-in-left 0.4s ease-out forwards;
+}
+
+.animate-scale-in {
+    animation: scale-in 0.3s ease-out forwards;
+}
+
+/* ── Tiptap editor ── */
+.ProseMirror {
+    @apply min-h-[400px] p-4 outline-none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+    @apply text-muted-foreground pointer-events-none float-left h-0;
+    content: attr(data-placeholder);
+}
+
+.ProseMirror blockquote {
+    @apply border-l-4 border-amber-500 pl-4 italic text-muted-foreground;
+}
+
+.ProseMirror pre {
+    @apply bg-muted p-4 rounded-md font-mono text-sm my-4;
+}
+
+.ProseMirror code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.ProseMirror h1 {
+    @apply text-display-lg font-serif mt-6 mb-3;
+}
+
+.ProseMirror h2 {
+    @apply text-headline-xl font-serif mt-5 mb-2;
+}
+
+.ProseMirror h3 {
+    @apply text-headline-lg font-serif mt-4 mb-2;
+}
+
+.ProseMirror ul {
+    @apply list-disc pl-6 my-3;
+}
+
+.ProseMirror ol {
+    @apply list-decimal pl-6 my-3;
+}
+
+.ProseMirror li {
+    @apply mb-1;
+}
+
+.ProseMirror a {
+    @apply text-amber-600 underline;
+}
