@@ -1,7 +1,7 @@
 import { getServerClient } from "@/lib/graphql/client";
-import { GET_ARTICLES } from "@/lib/graphql/queries/articles";
-import { GET_CATEGORIES } from "@/lib/graphql/queries/categories";
-import { ArticlesTable } from "@/components/dashboard/articles-table";
+import { GET_ARTICLES }    from "@/lib/graphql/queries/articles";
+import { GET_CATEGORIES }  from "@/lib/graphql/queries/categories";
+import { ArticlesTable }   from "@/components/dashboard/articles-table";
 import type { ArticleCardType, CategoryType } from "@/types";
 
 interface ArticlesResult {

@@ -1,5 +1,5 @@
-import { getServerClient } from "@/lib/graphql/client";
-import { GET_CATEGORIES } from "@/lib/graphql/queries/categories";
+import { getServerClient }   from "@/lib/graphql/client";
+import { GET_CATEGORIES }    from "@/lib/graphql/queries/categories";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import type { CategoryType } from "@/types";
 

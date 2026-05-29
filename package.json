@@ -27,3 +27,4 @@
     "docker:down": "docker compose down",
     "docker:clean": "docker compose down -v --remove-orphans"
   }
+}
