@@ -1,49 +1,26 @@
 import { getServerClient } from "@/lib/graphql/client";
 import { GET_ALL_COMMENTS } from "@/lib/graphql/queries/comments";
-import { AdminCommentsTable } from "@/components/admin/admin-comments-table";
-
-interface AdminComment {
-  id: string;
-  body: string;
-  articleId: string;
-  articleTitle: string;
-  articleSlug: string;
-  createdAt: string;
-  author: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  };
-}
+import { AdminCommentsClient } from "@/components/admin/comments-moderation";
+import { MessageSquare } from "lucide-react";
+import type { CommentWithContextConnectionResult } from "@/types";
 
 interface AllCommentsResult {
-  allComments: {
-    items: AdminComment[];
-    total: number;
-  };
+  allComments: CommentWithContextConnectionResult;
 }
 
-export default async function AdminCommentsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ offset?: string }>;
-}) {
-  const { offset: offsetStr } = await searchParams;
-  const offset = Number(offsetStr ?? 0);
-  const limit = 30;
-
-  let comments: AdminComment[] = [];
-  let total = 0;
+export default async function AdminCommentsPage() {
+  let initialData: CommentWithContextConnectionResult = { items: [], total: 0 };
 
   try {
     const client = await getServerClient();
     const data = await client.request<AllCommentsResult>(GET_ALL_COMMENTS, {
-      limit,
-      offset,
+      limit: 30,
+      offset: 0,
     });
-    comments = data.allComments.items;
-    total = data.allComments.total;
-  } catch {}
+    initialData = data.allComments;
+  } catch {
+    // Render with empty state
+  }
 
   return (
     <div className="p-6 max-w-5xl">
@@ -52,14 +29,14 @@ export default async function AdminCommentsPage({
           Comment Moderation
         </h1>
         <p className="text-caption text-muted-foreground mt-1">
-          {total} total comments across all articles
+          {initialData.total} total comment
+          {initialData.total !== 1 ? "s" : ""} across the platform
         </p>
       </div>
-      <AdminCommentsTable
-        comments={comments}
-        total={total}
-        limit={limit}
-        offset={offset}
+
+      <AdminCommentsClient
+        initialComments={initialData.items}
+        initialTotal={initialData.total}
       />
     </div>
   );

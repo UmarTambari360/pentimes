@@ -2,44 +2,43 @@ import { getServerClient } from "@/lib/graphql/client";
 import { GET_MY_COMMENTS } from "@/lib/graphql/queries/comments";
 import { DashboardCommentsClient } from "@/components/dashboard/comments-client";
 import { MessageSquare } from "lucide-react";
-
-interface MyComment {
-  id: string;
-  body: string;
-  articleId: string;
-  createdAt: string;
-}
+import type { CommentWithContextConnectionResult } from "@/types";
 
 interface MyCommentsResult {
-  myComments: MyComment[];
+  myComments: CommentWithContextConnectionResult;
 }
 
-export default async function CommentsPage() {
-  let comments: MyComment[] = [];
+export default async function DashboardCommentsPage() {
+  let initialData: CommentWithContextConnectionResult = { items: [], total: 0 };
 
   try {
     const client = await getServerClient();
-    const data = await client.request<MyCommentsResult>(GET_MY_COMMENTS);
-    comments = data.myComments;
-  } catch {}
+    const data = await client.request<MyCommentsResult>(GET_MY_COMMENTS, {
+      limit: 20,
+      offset: 0,
+    });
+    initialData = data.myComments;
+  } catch {
+    // Render empty state — client component handles errors
+  }
 
   return (
     <div className="p-6 max-w-3xl">
-      {/* Header */}
-      <div className="mb-8 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center">
-          <MessageSquare className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-        </div>
+      <div className="mb-6 flex items-center gap-2">
+        <MessageSquare className="h-5 w-5 text-amber-500" />
         <div>
           <h1 className="font-serif text-headline-xl font-bold">My Comments</h1>
-          <p className="text-caption text-muted-foreground">
-            {comments.length} {comments.length === 1 ? "comment" : "comments"}{" "}
-            posted
+          <p className="text-caption text-muted-foreground mt-0.5">
+            {initialData.total} comment{initialData.total !== 1 ? "s" : ""}{" "}
+            across all articles
           </p>
         </div>
       </div>
 
-      <DashboardCommentsClient initialComments={comments} />
+      <DashboardCommentsClient
+        initialComments={initialData.items}
+        initialTotal={initialData.total}
+      />
     </div>
   );
 }

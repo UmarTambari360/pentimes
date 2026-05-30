@@ -1,19 +1,26 @@
 import { z } from 'zod';
 import type { CommentSelect } from '../db/schema/index.js';
-import type { PublicUser }    from './user.type.js';
+import type { PublicUser } from './user.type.js';
 
 export type CommentRow = CommentSelect;
 
 /**
- * The shape returned to GraphQL resolvers — comment with author resolved.
+ * Shape returned to GraphQL resolvers — comment with author resolved.
  */
 export type CommentWithAuthor = CommentRow & {
   author: Pick<PublicUser, 'id' | 'name' | 'avatar'>;
 };
 
+/**
+ * Extended shape for admin/dashboard — includes article info.
+ */
+export type CommentWithContext = CommentRow & {
+  author: Pick<PublicUser, 'id' | 'name' | 'avatar'>;
+  article: { id: string; title: string; slug: string };
+};
+
 export const CreateCommentSchema = z.object({
   articleId: z.string().uuid('Invalid article ID'),
-
   body: z
     .string()
     .min(1, 'Comment cannot be empty')

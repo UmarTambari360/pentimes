@@ -95,6 +95,16 @@ export const CreateCommentInput = builder.inputType('CreateCommentInput', {
   }),
 });
 
+// New: explicit update input for comment body
+export const UpdateCommentBodyInput = builder.inputType(
+  'UpdateCommentBodyInput',
+  {
+    fields: (t) => ({
+      body: t.string({ required: true }),
+    }),
+  }
+);
+
 export const CreateProgramInput = builder.inputType('CreateProgramInput', {
   fields: (t) => ({
     title: t.string({ required: true }),

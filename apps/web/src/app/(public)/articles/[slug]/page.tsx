@@ -1,5 +1,4 @@
-'use client';
-
+// apps/web/src/app/(public)/articles/[slug]/page.tsx
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -105,7 +104,7 @@ export default async function ArticlePage({
     }),
     publicClient.request<CommentsResult>(GET_COMMENTS, {
       articleId: article.id,
-      limit: 20,
+      limit: 10,
       offset: 0,
     }),
   ]);
@@ -143,6 +142,7 @@ export default async function ArticlePage({
         url: `${process.env["NEXT_PUBLIC_SITE_URL"]}/logo.png`,
       },
     },
+    commentCount: comments.total,
   };
 
   return (
@@ -242,7 +242,7 @@ export default async function ArticlePage({
               </div>
             )}
 
-            {/* Comments */}
+            {/* ── Comments (Phase 10) ── */}
             <CommentsSection
               articleId={article.id}
               initialComments={comments.items}

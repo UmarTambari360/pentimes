@@ -1,6 +1,10 @@
 import { builder } from '../builder.js';
-import type { CommentWithAuthor } from '../../types/comment.type.ts';
+import type {
+  CommentWithAuthor,
+  CommentWithContext,
+} from '../../types/comment.type.ts';
 
+// ── Comment Author (embedded)
 export const CommentAuthorType = builder
   .objectRef<{
     id: string;
@@ -15,6 +19,22 @@ export const CommentAuthorType = builder
     }),
   });
 
+// ── Comment Article Context (for admin/dashboard) ─────────────────
+export const CommentArticleContextType = builder
+  .objectRef<{
+    id: string;
+    title: string;
+    slug: string;
+  }>('CommentArticleContext')
+  .implement({
+    fields: (t) => ({
+      id: t.exposeString('id'),
+      title: t.exposeString('title'),
+      slug: t.exposeString('slug'),
+    }),
+  });
+
+// ── Core Comment Type ─────────────────────────────────────────────
 export const CommentType = builder
   .objectRef<CommentWithAuthor>('Comment')
   .implement({
@@ -22,14 +42,17 @@ export const CommentType = builder
       id: t.exposeString('id'),
       body: t.exposeString('body'),
       articleId: t.exposeString('articleId'),
+
       createdAt: t.field({
         type: 'String',
         resolve: (c) => c.createdAt.toISOString(),
       }),
+
       updatedAt: t.field({
         type: 'String',
         resolve: (c) => c.updatedAt.toISOString(),
       }),
+
       author: t.field({
         type: CommentAuthorType,
         resolve: (c) => c.author,
@@ -37,6 +60,38 @@ export const CommentType = builder
     }),
   });
 
+// ── Comment With Context (includes article — for admin/user pages) ─
+export const CommentWithContextType = builder
+  .objectRef<CommentWithContext>('CommentWithContext')
+  .implement({
+    fields: (t) => ({
+      id: t.exposeString('id'),
+      body: t.exposeString('body'),
+      articleId: t.exposeString('articleId'),
+
+      createdAt: t.field({
+        type: 'String',
+        resolve: (c) => c.createdAt.toISOString(),
+      }),
+
+      updatedAt: t.field({
+        type: 'String',
+        resolve: (c) => c.updatedAt.toISOString(),
+      }),
+
+      author: t.field({
+        type: CommentAuthorType,
+        resolve: (c) => c.author,
+      }),
+
+      article: t.field({
+        type: CommentArticleContextType,
+        resolve: (c) => c.article,
+      }),
+    }),
+  });
+
+// ── Comment Connection (paginated) ────────────────────────────────
 export const CommentConnectionType = builder
   .objectRef<{
     items: CommentWithAuthor[];
@@ -49,44 +104,18 @@ export const CommentConnectionType = builder
     }),
   });
 
-// Admin-specific comment type with article context
-export type AdminComment = CommentWithAuthor & {
-  articleTitle: string;
-  articleSlug: string;
-};
-
-export const AdminCommentType = builder
-  .objectRef<AdminComment>('AdminComment')
-  .implement({
-    fields: (t) => ({
-      id: t.exposeString('id'),
-      body: t.exposeString('body'),
-      articleId: t.exposeString('articleId'),
-      articleTitle: t.exposeString('articleTitle'),
-      articleSlug: t.exposeString('articleSlug'),
-      createdAt: t.field({
-        type: 'String',
-        resolve: (c) => c.createdAt.toISOString(),
-      }),
-      updatedAt: t.field({
-        type: 'String',
-        resolve: (c) => c.updatedAt.toISOString(),
-      }),
-      author: t.field({
-        type: CommentAuthorType,
-        resolve: (c) => c.author,
-      }),
-    }),
-  });
-
-export const AdminCommentConnectionType = builder
+// ── Comment With Context Connection ──────────────────────────────
+export const CommentWithContextConnectionType = builder
   .objectRef<{
-    items: AdminComment[];
+    items: CommentWithContext[];
     total: number;
-  }>('AdminCommentConnection')
+  }>('CommentWithContextConnection')
   .implement({
     fields: (t) => ({
-      items: t.field({ type: [AdminCommentType], resolve: (c) => c.items }),
+      items: t.field({
+        type: [CommentWithContextType],
+        resolve: (c) => c.items,
+      }),
       total: t.exposeInt('total'),
     }),
   });

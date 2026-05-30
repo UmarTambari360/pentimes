@@ -1,4 +1,3 @@
-// Re-export shared types for convenience
 export type {
   PublicUser,
   Article,
@@ -72,6 +71,7 @@ export interface CategoryType {
 export interface CommentType {
   id: string;
   body: string;
+  articleId: string;
   createdAt: string;
   updatedAt: string;
   author: {
@@ -81,14 +81,21 @@ export interface CommentType {
   };
 }
 
-export interface AdminCommentType extends CommentType {
-  articleId: string;
-  articleTitle: string;
-  articleSlug: string;
+export interface CommentWithContextType extends CommentType {
+  article: {
+    id: string;
+    title: string;
+    slug: string;
+  };
 }
 
 export interface CommentConnectionResult {
   items: CommentType[];
+  total: number;
+}
+
+export interface CommentWithContextConnectionResult {
+  items: CommentWithContextType[];
   total: number;
 }
 

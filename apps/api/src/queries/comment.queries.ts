@@ -1,6 +1,6 @@
 import { db } from '../config/db.js';
 import { comments } from '../db/schema/index.js';
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, desc, count, sql } from 'drizzle-orm';
 
 const commentWithUserQuery = {
   with: {
@@ -8,7 +8,11 @@ const commentWithUserQuery = {
   },
 } as const;
 
-export async function findCommentsByArticle(articleId: string, limit = 20, offset = 0) {
+export async function findCommentsByArticle(
+  articleId: string,
+  limit = 20,
+  offset = 0
+) {
   const [items, totalResult] = await Promise.all([
     db.query.comments.findMany({
       where: eq(comments.articleId, articleId),
@@ -17,25 +21,39 @@ export async function findCommentsByArticle(articleId: string, limit = 20, offse
       offset,
       ...commentWithUserQuery,
     }),
-    db.select({ count: count() }).from(comments).where(eq(comments.articleId, articleId)),
+    db
+      .select({ count: count() })
+      .from(comments)
+      .where(eq(comments.articleId, articleId)),
   ]);
   return { items, total: Number(totalResult[0]?.count ?? 0) };
 }
 
-export async function findCommentsByUser(userId: string, limit = 20, offset = 0) {
-  return db.query.comments.findMany({
-    where: eq(comments.userId, userId),
-    orderBy: [desc(comments.createdAt)],
-    limit,
-    offset,
-    with: {
-      user: { columns: { id: true, name: true, avatar: true } },
-      article: { columns: { id: true, title: true, slug: true } },
-    },
-  });
+export async function findCommentsByUser(
+  userId: string,
+  limit = 20,
+  offset = 0
+) {
+  const [items, totalResult] = await Promise.all([
+    db.query.comments.findMany({
+      where: eq(comments.userId, userId),
+      orderBy: [desc(comments.createdAt)],
+      limit,
+      offset,
+      with: {
+        user: { columns: { id: true, name: true, avatar: true } },
+        article: { columns: { id: true, title: true, slug: true } },
+      },
+    }),
+    db
+      .select({ count: count() })
+      .from(comments)
+      .where(eq(comments.userId, userId)),
+  ]);
+  return { items, total: Number(totalResult[0]?.count ?? 0) };
 }
 
-export async function findAllComments(limit = 20, offset = 0) {
+export async function findAllComments(limit = 30, offset = 0) {
   const [items, totalResult] = await Promise.all([
     db.query.comments.findMany({
       orderBy: [desc(comments.createdAt)],
@@ -95,4 +113,12 @@ export async function deleteComment(id: string): Promise<boolean> {
     .where(eq(comments.id, id))
     .returning({ id: comments.id });
   return result.length > 0;
+}
+
+export async function countCommentsByArticle(articleId: string): Promise<number> {
+  const [result] = await db
+    .select({ count: count() })
+    .from(comments)
+    .where(eq(comments.articleId, articleId));
+  return Number(result?.count ?? 0);
 }
