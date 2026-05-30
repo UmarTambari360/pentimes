@@ -92,8 +92,8 @@ builder.mutationField('updateProfile', (t) =>
     args: { input: t.arg({ type: UpdateProfileInput, required: true }) },
     resolve: async (_parent, { input }, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
-       const cleanInput: { name?: string; bio?: string | null; avatar?: string | null } = {};
-      if (input.name != null)   cleanInput.name   = input.name;
+      const cleanInput: { name?: string; bio?: string | null; avatar?: string | null } = {};
+      if (input.name != null)         cleanInput.name   = input.name;
       if (input.bio !== undefined)    cleanInput.bio    = input.bio ?? null;
       if (input.avatar !== undefined) cleanInput.avatar = input.avatar ?? null;
       const user = await authService.updateProfile(ctx.currentUser.id, cleanInput);

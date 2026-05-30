@@ -1,3 +1,4 @@
+// apps/api/src/queries/user.queries.ts
 import { db }              from '../config/db.js';
 import { users }           from '../db/schema/index.js';
 import { eq }              from 'drizzle-orm';

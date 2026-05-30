@@ -35,6 +35,22 @@ export async function findCommentsByUser(userId: string, limit = 20, offset = 0)
   });
 }
 
+export async function findAllComments(limit = 20, offset = 0) {
+  const [items, totalResult] = await Promise.all([
+    db.query.comments.findMany({
+      orderBy: [desc(comments.createdAt)],
+      limit,
+      offset,
+      with: {
+        user: { columns: { id: true, name: true, avatar: true } },
+        article: { columns: { id: true, title: true, slug: true } },
+      },
+    }),
+    db.select({ count: count() }).from(comments),
+  ]);
+  return { items, total: Number(totalResult[0]?.count ?? 0) };
+}
+
 export async function findCommentById(id: string) {
   const result = await db.query.comments.findFirst({
     where: eq(comments.id, id),

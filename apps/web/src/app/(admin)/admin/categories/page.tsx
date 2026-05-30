@@ -1,5 +1,5 @@
-import { getServerClient }   from "@/lib/graphql/client";
-import { GET_CATEGORIES }    from "@/lib/graphql/queries/categories";
+import { getServerClient } from "@/lib/graphql/client";
+import { GET_CATEGORIES } from "@/lib/graphql/queries/categories";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import type { CategoryType } from "@/types";
 
@@ -21,7 +21,7 @@ export default async function AdminCategoriesPage() {
       <div className="mb-6">
         <h1 className="font-serif text-headline-xl font-bold">Categories</h1>
         <p className="text-caption text-muted-foreground mt-1">
-          Manage article categories
+          {categories.length} categories · Manage article taxonomy
         </p>
       </div>
       <CategoriesManager categories={categories} />

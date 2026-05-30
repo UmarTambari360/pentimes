@@ -2,6 +2,7 @@ import { builder } from '../builder.js';
 import {
   findCommentsByArticle,
   findCommentsByUser,
+  findAllComments,
   findCommentById,
   createComment,
   updateComment,
@@ -11,6 +12,7 @@ import { cacheService } from '../../services/redis.service.js';
 import { CreateCommentInput } from '../inputs.js';
 import '../typedefs/comment.typedef.js';
 import { CommentType, CommentConnectionType } from '../typedefs/comment.typedef.js';
+import { AdminCommentConnectionType } from '../typedefs/comment.typedef.js';
 import { GraphQLError } from 'graphql';
 
 builder.queryField('comments', (t) =>
@@ -37,9 +39,31 @@ builder.queryField('myComments', (t) =>
     authScopes: { authenticated: true },
     resolve: async (_parent, _args, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
-      const currentUser = ctx.currentUser;
-      const rows = await findCommentsByUser(currentUser.id);
+      const rows = await findCommentsByUser(ctx.currentUser.id);
       return rows.map((c) => ({ ...c, author: c.user }));
+    },
+  })
+);
+
+builder.queryField('allComments', (t) =>
+  t.field({
+    type: AdminCommentConnectionType,
+    authScopes: { role: 'admin' },
+    args: {
+      limit: t.arg.int({ required: false, defaultValue: 20 }),
+      offset: t.arg.int({ required: false, defaultValue: 0 }),
+    },
+    resolve: async (_parent, { limit, offset }) => {
+      const { items, total } = await findAllComments(limit ?? 20, offset ?? 0);
+      return {
+        items: items.map((c) => ({
+          ...c,
+          author: c.user,
+          articleTitle: (c.article as any)?.title ?? '',
+          articleSlug: (c.article as any)?.slug ?? '',
+        })),
+        total,
+      };
     },
   })
 );

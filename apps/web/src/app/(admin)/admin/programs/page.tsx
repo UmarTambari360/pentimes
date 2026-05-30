@@ -19,6 +19,9 @@ export default async function AdminProgramsPage() {
     programs = data.scheduledPrograms;
   } catch {}
 
+  const upcoming = programs.filter((p) => p.status === "upcoming").length;
+  const completed = programs.filter((p) => p.status === "completed").length;
+
   return (
     <div className="p-6 max-w-4xl">
       <div className="mb-6">
@@ -26,7 +29,9 @@ export default async function AdminProgramsPage() {
           Scheduled Programs
         </h1>
         <p className="text-caption text-muted-foreground mt-1">
-          Manage upcoming programs and events
+          {programs.length} total ·{" "}
+          <span className="text-blue-600">{upcoming} upcoming</span> ·{" "}
+          <span className="text-muted-foreground">{completed} completed</span>
         </p>
       </div>
       <ProgramsManager programs={programs} />

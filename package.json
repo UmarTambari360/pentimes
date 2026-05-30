@@ -26,5 +26,10 @@
     "docker:prod": "docker compose -f docker-compose.prod.yml up --build",
     "docker:down": "docker compose down",
     "docker:clean": "docker compose down -v --remove-orphans"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.23.6",
+    "@tiptap/extension-horizontal-rule": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6"
   }
 }

@@ -1,17 +1,19 @@
 // Re-export shared types for convenience
-export type { 
-    PublicUser, 
-    Article, 
-    ArticleCard, 
-    ArticleWithEngagement, 
-    Category, 
-    CategorySummary, 
-    Comment, 
-    ScheduledProgram, 
-    PaginationInfo, 
-    PaginatedResult, 
-    AuthPayload, 
-    AuthorStats, AdminStats } from '@pentimes/shared';
+export type {
+  PublicUser,
+  Article,
+  ArticleCard,
+  ArticleWithEngagement,
+  Category,
+  CategorySummary,
+  Comment,
+  ScheduledProgram,
+  PaginationInfo,
+  PaginatedResult,
+  AuthPayload,
+  AuthorStats,
+  AdminStats,
+} from '@pentimes/shared';
 
 // ── Frontend-specific types ──────────────────────────────────────
 
@@ -77,6 +79,12 @@ export interface CommentType {
     name: string;
     avatar: string | null;
   };
+}
+
+export interface AdminCommentType extends CommentType {
+  articleId: string;
+  articleTitle: string;
+  articleSlug: string;
 }
 
 export interface CommentConnectionResult {

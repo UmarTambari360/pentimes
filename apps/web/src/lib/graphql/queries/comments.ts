@@ -30,6 +30,27 @@ export const GET_MY_COMMENTS = gql`
   }
 `;
 
+export const GET_ALL_COMMENTS = gql`
+  query GetAllComments($limit: Int, $offset: Int) {
+    allComments(limit: $limit, offset: $offset) {
+      items {
+        id
+        body
+        articleId
+        articleTitle
+        articleSlug
+        createdAt
+        author {
+          id
+          name
+          avatar
+        }
+      }
+      total
+    }
+  }
+`;
+
 export const CREATE_COMMENT = gql`
   mutation CreateComment($input: CreateCommentInput!) {
     createComment(input: $input) {

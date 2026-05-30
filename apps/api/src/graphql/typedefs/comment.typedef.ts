@@ -1,7 +1,6 @@
 import { builder } from '../builder.js';
 import type { CommentWithAuthor } from '../../types/comment.type.ts';
 
-// Comment Author (embedded in comments)
 export const CommentAuthorType = builder
   .objectRef<{
     id: string;
@@ -16,7 +15,6 @@ export const CommentAuthorType = builder
     }),
   });
 
-// Comment Type
 export const CommentType = builder
   .objectRef<CommentWithAuthor>('Comment')
   .implement({
@@ -24,25 +22,21 @@ export const CommentType = builder
       id: t.exposeString('id'),
       body: t.exposeString('body'),
       articleId: t.exposeString('articleId'),
-
       createdAt: t.field({
         type: 'String',
         resolve: (c) => c.createdAt.toISOString(),
       }),
-
       updatedAt: t.field({
         type: 'String',
         resolve: (c) => c.updatedAt.toISOString(),
       }),
-
       author: t.field({
         type: CommentAuthorType,
-        resolve: (c) => c.author, // No cast needed if type is correct
+        resolve: (c) => c.author,
       }),
     }),
   });
 
-// Comment Connection (for pagination)
 export const CommentConnectionType = builder
   .objectRef<{
     items: CommentWithAuthor[];
@@ -51,6 +45,48 @@ export const CommentConnectionType = builder
   .implement({
     fields: (t) => ({
       items: t.field({ type: [CommentType], resolve: (c) => c.items }),
+      total: t.exposeInt('total'),
+    }),
+  });
+
+// Admin-specific comment type with article context
+export type AdminComment = CommentWithAuthor & {
+  articleTitle: string;
+  articleSlug: string;
+};
+
+export const AdminCommentType = builder
+  .objectRef<AdminComment>('AdminComment')
+  .implement({
+    fields: (t) => ({
+      id: t.exposeString('id'),
+      body: t.exposeString('body'),
+      articleId: t.exposeString('articleId'),
+      articleTitle: t.exposeString('articleTitle'),
+      articleSlug: t.exposeString('articleSlug'),
+      createdAt: t.field({
+        type: 'String',
+        resolve: (c) => c.createdAt.toISOString(),
+      }),
+      updatedAt: t.field({
+        type: 'String',
+        resolve: (c) => c.updatedAt.toISOString(),
+      }),
+      author: t.field({
+        type: CommentAuthorType,
+        resolve: (c) => c.author,
+      }),
+    }),
+  });
+
+export const AdminCommentConnectionType = builder
+  .objectRef<{
+    items: AdminComment[];
+    total: number;
+  }>('AdminCommentConnection')
+  .implement({
+    fields: (t) => ({
+      items: t.field({ type: [AdminCommentType], resolve: (c) => c.items }),
       total: t.exposeInt('total'),
     }),
   });

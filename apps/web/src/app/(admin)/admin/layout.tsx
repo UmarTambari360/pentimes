@@ -19,7 +19,7 @@ export default async function AdminLayout({
         <AdminSidebar className="h-full" />
       </aside>
 
-      {/* Mobile */}
+      {/* Mobile top bar + sheet */}
       <Sheet>
         <div className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
           <SheetTrigger asChild>
