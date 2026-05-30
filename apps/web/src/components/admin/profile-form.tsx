@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, Loader2, Shield } from "lucide-react";
 import {
   UPDATE_PROFILE_MUTATION,
   CHANGE_PASSWORD_MUTATION,
@@ -17,27 +17,36 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AuthorAvatar } from "@/components/ui/author-avatar";
 import { Separator } from "@/components/ui/separator";
-import type { UserType } from "@/types";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import type { SessionUser } from "@/lib/auth/session";
 
 const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
 
 const ProfileSchema = z.object({
-  name: z.string().min(2).max(120).trim(),
-  bio: z.string().max(500).optional(),
-  avatar: z.string().url().optional().or(z.literal("")),
+  name: z
+    .string()
+    .min(2, "Name must be at least 2 characters")
+    .max(120, "Name cannot exceed 120 characters")
+    .trim(),
+  bio: z
+    .string()
+    .max(500, "Bio cannot exceed 500 characters")
+    .trim()
+    .optional(),
 });
 
 const PasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, "Current password required"),
+    currentPassword: z.string().min(1, "Current password is required"),
     newPassword: z
       .string()
       .min(8, "At least 8 characters")
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Include uppercase, lowercase, and number",
+        "Must include uppercase, lowercase, and a number",
       ),
-    confirmPassword: z.string(),
+    confirmPassword: z.string().min(1, "Please confirm your new password"),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
     message: "Passwords do not match",
@@ -45,13 +54,13 @@ const PasswordSchema = z
   });
 
 interface ProfileFormProps {
-  user: UserType;
+  user: SessionUser;
 }
 
 export function ProfileForm({ user }: ProfileFormProps) {
-  const [saving, setSaving] = useState(false);
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState(user.avatar);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(
+    user.avatar,
+  );
   const [avatarUploading, setAvatarUploading] = useState(false);
 
   const getAuthClient = () => {
@@ -68,13 +77,13 @@ export function ProfileForm({ user }: ProfileFormProps) {
     register,
     handleSubmit,
     setValue,
-    formState: { errors },
+    watch,
+    formState: { errors, isSubmitting: profileSubmitting },
   } = useForm({
     resolver: zodResolver(ProfileSchema),
     defaultValues: {
       name: user.name,
       bio: user.bio ?? "",
-      avatar: user.avatar ?? "",
     },
   });
 
@@ -82,33 +91,32 @@ export function ProfileForm({ user }: ProfileFormProps) {
     register: regPw,
     handleSubmit: handlePwSubmit,
     reset: resetPw,
-    formState: { errors: pwErrors },
+    formState: { errors: pwErrors, isSubmitting: pwSubmitting },
   } = useForm<z.infer<typeof PasswordSchema>>({
     resolver: zodResolver(PasswordSchema),
   });
 
   const onProfileSubmit = async (data: z.infer<typeof ProfileSchema>) => {
-    setSaving(true);
-    try {
+    const promise = async () => {
       const client = getAuthClient();
       await client.request(UPDATE_PROFILE_MUTATION, {
         input: {
           name: data.name,
           bio: data.bio || null,
-          avatar: data.avatar || null,
+          avatar: avatarPreview || null,
         },
       });
-      toast.success("Profile updated!");
-    } catch {
-      toast.error("Failed to update profile");
-    } finally {
-      setSaving(false);
-    }
+    };
+    toast.promise(promise(), {
+      loading: "Saving profile…",
+      success: "Profile updated successfully!",
+      error: (err) =>
+        err instanceof Error ? err.message : "Failed to update profile.",
+    });
   };
 
   const onPasswordSubmit = async (data: z.infer<typeof PasswordSchema>) => {
-    setPasswordSaving(true);
-    try {
+    const promise = async () => {
       const client = getAuthClient();
       await client.request(CHANGE_PASSWORD_MUTATION, {
         input: {
@@ -117,96 +125,160 @@ export function ProfileForm({ user }: ProfileFormProps) {
           confirmPassword: data.confirmPassword,
         },
       });
-      toast.success("Password changed successfully!");
       resetPw();
-    } catch {
-      toast.error("Failed to change password. Check your current password.");
-    } finally {
-      setPasswordSaving(false);
-    }
+    };
+    toast.promise(promise(), {
+      loading: "Changing password…",
+      success: "Password changed successfully!",
+      error: (err) => {
+        const msg =
+          err instanceof Error ? err.message : "Failed to change password.";
+        return msg.replace("GraphQL Error: ", "");
+      },
+    });
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Avatar must be under 5MB");
+      return;
+    }
 
     setAvatarUploading(true);
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        const token =
-          document.cookie
-            .split("; ")
-            .find((r) => r.startsWith("access_token="))
-            ?.split("=")[1] ?? "";
-        const response = await fetch(`${API_URL}/upload/avatar`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ image: `data:${file.type};base64,${base64}` }),
-        });
-        if (!response.ok) throw new Error();
-        const { url } = (await response.json()) as { url: string };
-        setValue("avatar", url);
-        setAvatarPreview(url);
-        toast.success("Avatar updated!");
-      };
-      reader.readAsDataURL(file);
-    } catch {
-      toast.error("Failed to upload avatar");
-    } finally {
-      setAvatarUploading(false);
-    }
+    const promise = new Promise<string>(async (resolve, reject) => {
+      try {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64 = (reader.result as string).split(",")[1];
+          const token =
+            document.cookie
+              .split("; ")
+              .find((r) => r.startsWith("access_token="))
+              ?.split("=")[1] ?? "";
+
+          const response = await fetch(`${API_URL}/upload/avatar`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              image: `data:${file.type};base64,${base64}`,
+            }),
+          });
+
+          if (!response.ok) {
+            reject(new Error("Upload failed"));
+            return;
+          }
+          const { url } = (await response.json()) as { url: string };
+          setAvatarPreview(url);
+          resolve(url);
+        };
+        reader.readAsDataURL(file);
+      } catch (err) {
+        reject(err);
+      }
+    });
+
+    toast.promise(promise, {
+      loading: "Uploading avatar…",
+      success: "Avatar uploaded! Save your profile to apply.",
+      error: "Failed to upload avatar.",
+    });
+
+    await promise.catch(() => {});
+    setAvatarUploading(false);
+  };
+
+  const roleVariant: Record<
+    string,
+    "default" | "amber" | "success" | "published"
+  > = {
+    reader: "default",
+    author: "amber",
+    admin: "success",
   };
 
   return (
-    <div className="space-y-8">
-      {/* Profile form */}
-      <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-5">
-        <h2 className="font-serif font-semibold text-body">
-          Personal Information
-        </h2>
+    <div className="space-y-10">
+      {/* ── Profile section ── */}
+      <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-6">
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="font-serif font-bold text-headline">
+            Personal Information
+          </h2>
+        </div>
 
-        {/* Avatar */}
-        <div className="flex items-center gap-4">
-          <div className="relative">
+        {/* Avatar + account info */}
+        <div className="flex items-start gap-6 p-5 rounded-xl bg-muted/30 border border-border">
+          {/* Avatar with upload button */}
+          <div className="relative shrink-0">
             <AuthorAvatar
               author={{
                 id: user.id,
                 name: user.name,
-                avatar: avatarPreview ?? null,
+                avatar: avatarPreview,
               }}
               size="lg"
             />
-            <label className="absolute -bottom-1 -right-1 bg-amber-500 hover:bg-amber-600 text-ink-900 rounded-full p-1.5 cursor-pointer transition-colors shadow-md">
+            <label
+              className={cn(
+                "absolute -bottom-1 -right-1 w-7 h-7 bg-amber-500 hover:bg-amber-600 text-ink-900 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-md",
+                avatarUploading && "opacity-70 pointer-events-none",
+              )}
+              title="Upload new avatar"
+            >
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleAvatarUpload}
                 className="sr-only"
+                disabled={avatarUploading}
               />
               {avatarUploading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Camera className="h-3 w-3" />
+                <Camera className="h-3.5 w-3.5" />
               )}
             </label>
           </div>
-          <div>
-            <p className="text-body-sm font-semibold">{user.name}</p>
-            <p className="text-caption text-muted-foreground capitalize">
-              {user.role} · {user.email}
+
+          {/* Account details */}
+          <div className="min-w-0">
+            <p className="font-semibold text-body truncate">{user.name}</p>
+            <p className="text-body-sm text-muted-foreground truncate">
+              {user.email}
             </p>
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <Badge
+                variant={roleVariant[user.role] ?? "default"}
+                className="capitalize"
+              >
+                {user.role === "admin" && <Shield className="h-3 w-3 mr-1" />}
+                {user.role}
+              </Badge>
+              <span className="text-caption text-muted-foreground">
+                Member since{" "}
+                {new Date(user.createdAt).toLocaleDateString("en-NG", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="name">Display Name</Label>
+        {/* Name */}
+        <div className="space-y-2">
+          <Label htmlFor="name" className="font-semibold">
+            Display Name <span className="text-destructive">*</span>
+          </Label>
           <Input
             id="name"
+            placeholder="Your full name"
             {...register("name")}
             className={errors.name ? "border-destructive" : ""}
           />
@@ -217,32 +289,69 @@ export function ProfileForm({ user }: ProfileFormProps) {
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="bio">Bio</Label>
+        {/* Bio */}
+        <div className="space-y-2">
+          <Label htmlFor="bio" className="font-semibold">
+            Bio
+            <span className="ml-1.5 text-caption text-muted-foreground font-normal">
+              (shown on your articles — max 500 chars)
+            </span>
+          </Label>
           <Textarea
             id="bio"
-            rows={3}
-            placeholder="Tell readers about yourself…"
+            rows={4}
+            placeholder="Tell readers about yourself — your background, expertise, and what you write about…"
             maxLength={500}
+            className="resize-none"
             {...register("bio")}
           />
+          <div className="flex justify-between">
+            {errors.bio && (
+              <p className="text-caption text-destructive">
+                {errors.bio.message}
+              </p>
+            )}
+            <span className="text-caption text-muted-foreground ml-auto">
+              {watch("bio")?.length ?? 0}/500
+            </span>
+          </div>
         </div>
 
-        <Button type="submit" variant="amber" disabled={saving}>
-          {saving ? "Saving…" : "Save Changes"}
+        <Button
+          type="submit"
+          variant="amber"
+          disabled={profileSubmitting}
+          className="gap-2"
+        >
+          {profileSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+          {profileSubmitting ? "Saving…" : "Save Profile"}
         </Button>
       </form>
 
       <Separator />
 
-      {/* Password form */}
-      <form onSubmit={handlePwSubmit(onPasswordSubmit)} className="space-y-5">
-        <h2 className="font-serif font-semibold text-body">Change Password</h2>
+      {/* ── Password section ── */}
+      <form onSubmit={handlePwSubmit(onPasswordSubmit)} className="space-y-6">
+        <div>
+          <h2 className="font-serif font-bold text-headline mb-1">
+            Change Password
+          </h2>
+          <p className="text-body-sm text-muted-foreground">
+            Use a strong password with at least 8 characters, including
+            uppercase, lowercase, and a number.
+          </p>
+        </div>
 
-        <div className="space-y-1.5">
-          <Label>Current Password</Label>
+        {/* Current password */}
+        <div className="space-y-2">
+          <Label htmlFor="currentPassword" className="font-semibold">
+            Current Password <span className="text-destructive">*</span>
+          </Label>
           <Input
+            id="currentPassword"
             type="password"
+            autoComplete="current-password"
+            placeholder="Your current password"
             {...regPw("currentPassword")}
             className={pwErrors.currentPassword ? "border-destructive" : ""}
           />
@@ -253,10 +362,16 @@ export function ProfileForm({ user }: ProfileFormProps) {
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <Label>New Password</Label>
+        {/* New password */}
+        <div className="space-y-2">
+          <Label htmlFor="newPassword" className="font-semibold">
+            New Password <span className="text-destructive">*</span>
+          </Label>
           <Input
+            id="newPassword"
             type="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
             {...regPw("newPassword")}
             className={pwErrors.newPassword ? "border-destructive" : ""}
           />
@@ -267,10 +382,16 @@ export function ProfileForm({ user }: ProfileFormProps) {
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Confirm New Password</Label>
+        {/* Confirm password */}
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword" className="font-semibold">
+            Confirm New Password <span className="text-destructive">*</span>
+          </Label>
           <Input
+            id="confirmPassword"
             type="password"
+            autoComplete="new-password"
+            placeholder="Repeat your new password"
             {...regPw("confirmPassword")}
             className={pwErrors.confirmPassword ? "border-destructive" : ""}
           />
@@ -281,10 +402,34 @@ export function ProfileForm({ user }: ProfileFormProps) {
           )}
         </div>
 
-        <Button type="submit" variant="outline" disabled={passwordSaving}>
-          {passwordSaving ? "Changing…" : "Change Password"}
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={pwSubmitting}
+          className="gap-2"
+        >
+          {pwSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+          {pwSubmitting ? "Changing…" : "Change Password"}
         </Button>
       </form>
+
+      <Separator />
+
+      {/* ── Danger zone ── */}
+      <div className="space-y-4">
+        <h2 className="font-serif font-bold text-headline">Account</h2>
+        <div className="p-4 rounded-lg border border-border bg-muted/20">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-body-sm font-semibold">Email Address</p>
+              <p className="text-caption text-muted-foreground">{user.email}</p>
+              <p className="text-caption text-muted-foreground mt-1">
+                To change your email, please contact an administrator.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

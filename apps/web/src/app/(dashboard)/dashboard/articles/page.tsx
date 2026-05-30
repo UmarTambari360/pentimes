@@ -1,49 +1,52 @@
-import { getServerClient } from "@/lib/graphql/client";
 import { getCurrentUser } from "@/lib/auth/session";
-import { GET_ARTICLES } from "@/lib/graphql/queries/articles";
-import { ArticlesTable } from "@/components/dashboard/articles-table";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { cachedClient } from "@/lib/graphql/client";
+import { GET_CATEGORIES } from "@/lib/graphql/queries/categories";
+import { ArticleEditor } from "@/components/dashboard/article-editor";
 import { PenSquare } from "lucide-react";
-import type { ArticleCardType } from "@/types";
+import type { CategoryType } from "@/types";
 
-interface ArticlesResult {
-  articles: { items: ArticleCardType[]; total: number };
+interface CategoriesResult {
+  categories: CategoryType[];
 }
 
-export default async function DashboardArticlesPage() {
+export default async function NewArticlePage() {
   const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (user.role === "reader") redirect("/dashboard");
 
-  let articles: ArticleCardType[] = [];
-  let total = 0;
-
+  let categories: CategoryType[] = [];
   try {
-    const client = await getServerClient();
-    const data = await client.request<ArticlesResult>(GET_ARTICLES, {
-      filters: { authorId: user?.id, limit: 50, offset: 0 },
-    });
-    articles = data.articles.items;
-    total = data.articles.total;
+    const client = cachedClient(1800);
+    const data = await client.request<CategoriesResult>(GET_CATEGORIES);
+    categories = data.categories;
   } catch {}
 
   return (
-    <div className="p-6 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-serif text-headline-xl font-bold">My Articles</h1>
-          <p className="text-caption text-muted-foreground mt-1">
-            {total} total article{total !== 1 ? "s" : ""}
-          </p>
+    <div className="p-6 max-w-4xl">
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-1">
+          <PenSquare className="h-5 w-5 text-amber-500" />
+          <h1 className="font-serif text-headline-xl font-bold">
+            Write New Article
+          </h1>
         </div>
-        <Button variant="amber" asChild className="gap-2">
-          <Link href="/dashboard/articles/new">
-            <PenSquare className="h-4 w-4" />
-            New Article
-          </Link>
-        </Button>
+        <p className="text-body-sm text-muted-foreground">
+          Share your story with Pen Times readers. Fill in all required fields
+          before publishing.
+        </p>
       </div>
 
-      <ArticlesTable articles={articles} userRole={user?.role ?? "reader"} />
+      {categories.length === 0 && (
+        <div className="mb-6 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <p className="text-body-sm text-amber-800 dark:text-amber-300">
+            <strong>Note:</strong> No categories are available yet. An admin
+            must create categories before you can publish articles.
+          </p>
+        </div>
+      )}
+
+      <ArticleEditor categories={categories} />
     </div>
   );
 }

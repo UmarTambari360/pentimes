@@ -4,7 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
-import { Eye, Edit, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  Eye,
+  Edit,
+  Trash2,
+  MoreHorizontal,
+  Globe,
+  EyeOff,
+  Heart,
+  MessageCircle,
+} from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -47,7 +56,9 @@ export function ArticlesTable({
 }: ArticlesTableProps) {
   const [articles, setArticles] = useState(initialArticles);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteTitle, setDeleteTitle] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const getAuthClient = () => {
     const token = document.cookie
@@ -62,22 +73,25 @@ export function ArticlesTable({
   const handleDelete = async () => {
     if (!deleteId) return;
     setLoading(true);
-    try {
+    const promise = async () => {
       const client = getAuthClient();
       await client.request(DELETE_ARTICLE, { id: deleteId });
       setArticles((prev) => prev.filter((a) => a.id !== deleteId));
-      toast.success("Article deleted");
       setDeleteId(null);
-    } catch {
-      toast.error("Failed to delete article");
-    } finally {
-      setLoading(false);
-    }
+      setDeleteTitle("");
+    };
+    toast.promise(promise(), {
+      loading: "Deleting article…",
+      success: "Article deleted successfully.",
+      error: "Failed to delete article. Please try again.",
+    });
+    setLoading(false);
   };
 
   const handleToggleStatus = async (article: ArticleCardType) => {
     const newStatus = article.status === "published" ? "draft" : "published";
-    try {
+    setTogglingId(article.id);
+    const promise = async () => {
       const client = getAuthClient();
       await client.request(UPDATE_ARTICLE, {
         id: article.id,
@@ -88,49 +102,70 @@ export function ArticlesTable({
           a.id === article.id ? { ...a, status: newStatus } : a,
         ),
       );
-      toast.success(
-        `Article ${newStatus === "published" ? "published" : "unpublished"}`,
-      );
-    } catch {
-      toast.error("Failed to update article status");
-    }
+    };
+    toast.promise(promise(), {
+      loading:
+        newStatus === "published"
+          ? "Publishing article…"
+          : "Unpublishing article…",
+      success:
+        newStatus === "published"
+          ? "Article is now live!"
+          : "Article moved to drafts.",
+      error: "Failed to update status.",
+    });
+    setTogglingId(null);
   };
 
   if (articles.length === 0) {
     return (
       <div className="text-center py-12 border rounded-lg border-dashed border-border">
-        <p className="text-body-sm text-muted-foreground">
-          No articles yet. Write your first one!
-        </p>
+        <p className="text-body-sm text-muted-foreground">No articles found.</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="rounded-lg border border-border overflow-hidden shadow-card">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
+            <TableRow className="bg-muted/30">
+              <TableHead className="w-[40%]">Title</TableHead>
               <TableHead className="hidden sm:table-cell">Status</TableHead>
-              <TableHead className="hidden md:table-cell">Views</TableHead>
+              <TableHead className="hidden md:table-cell">
+                <span className="flex items-center gap-1">
+                  <Eye className="h-3.5 w-3.5" /> Views
+                </span>
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                <span className="flex items-center gap-1">
+                  <Heart className="h-3.5 w-3.5" /> Likes
+                </span>
+              </TableHead>
               <TableHead className="hidden md:table-cell">Date</TableHead>
-              <TableHead className="w-10" />
+              <TableHead className="w-10 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {articles.map((article) => (
-              <TableRow key={article.id}>
+              <TableRow
+                key={article.id}
+                className={
+                  togglingId === article.id ? "opacity-60 animate-pulse" : ""
+                }
+              >
+                {/* Title */}
                 <TableCell>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1.5 min-w-0">
                     <Link
                       href={`/dashboard/articles/${article.id}/edit`}
-                      className="font-medium text-body-sm hover:text-amber-700 transition-colors line-clamp-2"
+                      className="font-semibold text-body-sm hover:text-amber-700 dark:hover:text-amber-400 transition-colors line-clamp-2 leading-snug"
                     >
                       {article.title}
                     </Link>
-                    <div className="flex items-center gap-2 sm:hidden">
+                    {/* Mobile-only meta */}
+                    <div className="flex items-center gap-2 sm:hidden flex-wrap">
                       <Badge
                         variant={
                           article.status === "published" ? "published" : "draft"
@@ -141,9 +176,28 @@ export function ArticlesTable({
                       <span className="text-caption text-muted-foreground">
                         {formatRelativeDate(article.createdAt)}
                       </span>
+                      <span className="text-caption text-muted-foreground flex items-center gap-1">
+                        <Eye className="h-3 w-3" />
+                        {article.views.toLocaleString()}
+                      </span>
                     </div>
+                    {/* Categories */}
+                    {article.categories.length > 0 && (
+                      <div className="hidden sm:flex gap-1 flex-wrap">
+                        {article.categories.slice(0, 2).map((cat) => (
+                          <span
+                            key={cat.id}
+                            className="text-[0.6rem] uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-0.5 rounded"
+                          >
+                            {cat.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </TableCell>
+
+                {/* Status */}
                 <TableCell className="hidden sm:table-cell">
                   <Badge
                     variant={
@@ -153,51 +207,82 @@ export function ArticlesTable({
                     {article.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="hidden md:table-cell text-body-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <Eye className="h-3.5 w-3.5" />
-                    {article.views.toLocaleString()}
-                  </span>
+
+                {/* Views */}
+                <TableCell className="hidden md:table-cell text-body-sm text-muted-foreground tabular-nums">
+                  {article.views.toLocaleString()}
                 </TableCell>
-                <TableCell className="hidden md:table-cell text-body-sm text-muted-foreground">
+
+                {/* Likes */}
+                <TableCell className="hidden lg:table-cell text-body-sm text-muted-foreground tabular-nums">
+                  {article.likeCount.toLocaleString()}
+                </TableCell>
+
+                {/* Date */}
+                <TableCell className="hidden md:table-cell text-body-sm text-muted-foreground whitespace-nowrap">
                   {formatRelativeDate(article.createdAt)}
                 </TableCell>
-                <TableCell>
+
+                {/* Actions */}
+                <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-8 w-8"
+                      >
                         <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Open menu</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem asChild>
                         <Link
                           href={`/articles/${article.slug}`}
                           target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2"
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
+                          <Eye className="h-4 w-4" />
+                          View live
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/dashboard/articles/${article.id}/edit`}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
+                        <Link
+                          href={`/dashboard/articles/${article.id}/edit`}
+                          className="flex items-center gap-2"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit article
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => handleToggleStatus(article)}
+                        disabled={togglingId === article.id}
+                        className="flex items-center gap-2"
                       >
-                        {article.status === "published"
-                          ? "Unpublish"
-                          : "Publish"}
+                        {article.status === "published" ? (
+                          <>
+                            <EyeOff className="h-4 w-4" />
+                            Unpublish
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="h-4 w-4" />
+                            Publish now
+                          </>
+                        )}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteId(article.id)}
+                        className="text-destructive focus:text-destructive flex items-center gap-2"
+                        onClick={() => {
+                          setDeleteId(article.id);
+                          setDeleteTitle(article.title);
+                        }}
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
+                        <Trash2 className="h-4 w-4" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -209,17 +294,37 @@ export function ArticlesTable({
         </Table>
       </div>
 
-      <Dialog open={Boolean(deleteId)} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent>
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={Boolean(deleteId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteId(null);
+            setDeleteTitle("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Article</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone. The article will be permanently
-              removed.
+            <DialogDescription className="text-body-sm">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-foreground">
+                &ldquo;{deleteTitle}&rdquo;
+              </span>
+              ? This action cannot be undone. All likes, comments, and bookmarks
+              associated with this article will also be removed.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteId(null);
+                setDeleteTitle("");
+              }}
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button
@@ -227,7 +332,7 @@ export function ArticlesTable({
               onClick={handleDelete}
               disabled={loading}
             >
-              {loading ? "Deleting..." : "Delete Article"}
+              {loading ? "Deleting…" : "Delete Article"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -83,6 +83,18 @@ export const GET_ARTICLE = gql`
   }
 `;
 
+export const GET_ARTICLE_BY_ID = gql`
+  ${ARTICLE_FULL_FIELDS}
+  query GetArticles($filters: ArticleFiltersInput) {
+    articles(filters: $filters) {
+      items {
+        ...ArticleFullFields
+      }
+      total
+    }
+  }
+`;
+
 export const SEARCH_ARTICLES = gql`
   ${ARTICLE_CARD_FIELDS}
   query SearchArticles($query: String!, $limit: Int, $offset: Int) {
