@@ -1,101 +1,58 @@
+// apps/api/src/graphql/resolvers/comment.resolver.ts
 import { builder } from '../builder.js';
 import {
   findCommentsByArticle,
   findCommentsByUser,
-  findAllComments,
   findCommentById,
   createComment,
   updateComment,
   deleteComment,
 } from '../../queries/comment.queries.js';
-import { cacheService } from '../../services/redis.service.js';
+import { cacheService }       from '../../services/redis.service.js';
 import { CreateCommentInput } from '../inputs.js';
 import '../typedefs/comment.typedef.js';
-import {
-  CommentType,
-  CommentConnectionType,
-  CommentWithContextConnectionType,
-} from '../typedefs/comment.typedef.js';
-import { GraphQLError } from 'graphql';
+import { CommentType, CommentConnectionType } from '../typedefs/comment.typedef.js';
+import { GraphQLError }                       from 'graphql';
+import { ApiError }                           from '../../middleware/errorHandler.middleware.js';
+import { logger }                             from '../../helpers/logger.js';
 
-// ── Query: comments on an article (public, paginated) ─────────────
 builder.queryField('comments', (t) =>
   t.field({
     type: CommentConnectionType,
     args: {
       articleId: t.arg.string({ required: true }),
-      limit: t.arg.int({ required: false, defaultValue: 20 }),
-      offset: t.arg.int({ required: false, defaultValue: 0 }),
+      limit:     t.arg.int({ required: false, defaultValue: 20 }),
+      offset:    t.arg.int({ required: false, defaultValue: 0 }),
     },
     resolve: async (_parent, { articleId, limit, offset }) => {
-      const { items, total } = await findCommentsByArticle(
-        articleId,
-        limit ?? 20,
-        offset ?? 0
-      );
-      return {
-        items: items.map((c) => ({ ...c, author: c.user })),
-        total,
-      };
+      try {
+        const { items, total } = await findCommentsByArticle(articleId, limit ?? 20, offset ?? 0);
+        return { items: items.map((c) => ({ ...c, author: c.user })), total };
+      } catch (err) {
+        logger.error('comments query failed', { articleId, error: err instanceof Error ? err.message : String(err) });
+        throw new GraphQLError('Failed to fetch comments.');
+      }
     },
-  })
+  }),
 );
 
-// ── Query: current user's comments (dashboard) ────────────────────
 builder.queryField('myComments', (t) =>
   t.field({
-    type: CommentWithContextConnectionType,
+    type: [CommentType],
     authScopes: { authenticated: true },
-    args: {
-      limit: t.arg.int({ required: false, defaultValue: 20 }),
-      offset: t.arg.int({ required: false, defaultValue: 0 }),
-    },
-    resolve: async (_parent, { limit, offset }, ctx) => {
+    resolve: async (_parent, _args, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
-      const { items, total } = await findCommentsByUser(
-        ctx.currentUser.id,
-        limit ?? 20,
-        offset ?? 0
-      );
-      return {
-        items: items.map((c) => ({
-          ...c,
-          author: c.user,
-          article: c.article as { id: string; title: string; slug: string },
-        })),
-        total,
-      };
+      try {
+        const rows = await findCommentsByUser(ctx.currentUser.id);
+        return rows.items.map((c) => ({ ...c, author: c.user }));
+      } catch (err) {
+        logger.error('myComments query failed', { userId: ctx.currentUser.id, error: err instanceof Error ? err.message : String(err) });
+        throw new GraphQLError('Failed to fetch your comments.');
+      }
     },
-  })
+  }),
 );
 
-// ── Query: all comments (admin only) ─────────────────────────────
-builder.queryField('allComments', (t) =>
-  t.field({
-    type: CommentWithContextConnectionType,
-    authScopes: { role: 'admin' },
-    args: {
-      limit: t.arg.int({ required: false, defaultValue: 30 }),
-      offset: t.arg.int({ required: false, defaultValue: 0 }),
-    },
-    resolve: async (_parent, { limit, offset }) => {
-      const { items, total } = await findAllComments(
-        limit ?? 30,
-        offset ?? 0
-      );
-      return {
-        items: items.map((c) => ({
-          ...c,
-          author: c.user,
-          article: c.article as { id: string; title: string; slug: string },
-        })),
-        total,
-      };
-    },
-  })
-);
-
-// ── Mutation: createComment ───────────────────────────────────────
 builder.mutationField('createComment', (t) =>
   t.field({
     type: CommentType,
@@ -103,52 +60,53 @@ builder.mutationField('createComment', (t) =>
     args: { input: t.arg({ type: CreateCommentInput, required: true }) },
     resolve: async (_parent, { input }, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
-
-      const comment = await createComment({
-        body: input.body,
-        userId: ctx.currentUser.id,
-        articleId: input.articleId,
-      });
-
-      // Invalidate the article cache so comment count updates
-      await cacheService.invalidateArticleCache();
-
-      return { ...comment, author: comment.user };
+      try {
+        const comment = await createComment({
+          body:      input.body,
+          userId:    ctx.currentUser.id,
+          articleId: input.articleId,
+        });
+        await cacheService.invalidateArticleCache().catch((err) => {
+          logger.warn('Cache invalidation failed after createComment', { error: err instanceof Error ? err.message : String(err) });
+        });
+        return { ...comment, author: comment.user };
+      } catch (err) {
+        if (err instanceof GraphQLError || err instanceof ApiError) throw err;
+        logger.error('createComment mutation failed', { userId: ctx.currentUser.id, error: err instanceof Error ? err.message : String(err) });
+        throw new GraphQLError('Failed to post comment. Please try again.');
+      }
     },
-  })
+  }),
 );
 
-// ── Mutation: updateComment ───────────────────────────────────────
 builder.mutationField('updateComment', (t) =>
   t.field({
     type: CommentType,
     authScopes: { authenticated: true },
     args: {
-      id: t.arg.string({ required: true }),
+      id:   t.arg.string({ required: true }),
       body: t.arg.string({ required: true }),
     },
     resolve: async (_parent, { id, body }, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
-
-      const existing = await findCommentById(id);
-      if (!existing) throw new GraphQLError('Comment not found');
-
-      if (
-        existing.userId !== ctx.currentUser.id &&
-        ctx.currentUser.role !== 'admin'
-      ) {
-        throw new GraphQLError('You can only edit your own comments');
+      try {
+        const existing = await findCommentById(id);
+        if (!existing) throw new GraphQLError('Comment not found.');
+        if (existing.userId !== ctx.currentUser.id && ctx.currentUser.role !== 'admin') {
+          throw new GraphQLError('You can only edit your own comments.');
+        }
+        const updated = await updateComment(id, body);
+        if (!updated) throw new GraphQLError('Failed to update comment.');
+        return { ...updated, author: updated.user };
+      } catch (err) {
+        if (err instanceof GraphQLError || err instanceof ApiError) throw err;
+        logger.error('updateComment mutation failed', { commentId: id, error: err instanceof Error ? err.message : String(err) });
+        throw new GraphQLError('Failed to update comment. Please try again.');
       }
-
-      const updated = await updateComment(id, body);
-      if (!updated) throw new GraphQLError('Failed to update comment');
-
-      return { ...updated, author: updated.user };
     },
-  })
+  }),
 );
 
-// ── Mutation: deleteComment ───────────────────────────────────────
 builder.mutationField('deleteComment', (t) =>
   t.field({
     type: 'Boolean',
@@ -156,23 +114,18 @@ builder.mutationField('deleteComment', (t) =>
     args: { id: t.arg.string({ required: true }) },
     resolve: async (_parent, { id }, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
-
-      const existing = await findCommentById(id);
-      if (!existing) throw new GraphQLError('Comment not found');
-
-      if (
-        existing.userId !== ctx.currentUser.id &&
-        ctx.currentUser.role !== 'admin'
-      ) {
-        throw new GraphQLError('You can only delete your own comments');
+      try {
+        const existing = await findCommentById(id);
+        if (!existing) throw new GraphQLError('Comment not found.');
+        if (existing.userId !== ctx.currentUser.id && ctx.currentUser.role !== 'admin') {
+          throw new GraphQLError('You can only delete your own comments.');
+        }
+        return await deleteComment(id);
+      } catch (err) {
+        if (err instanceof GraphQLError || err instanceof ApiError) throw err;
+        logger.error('deleteComment mutation failed', { commentId: id, error: err instanceof Error ? err.message : String(err) });
+        throw new GraphQLError('Failed to delete comment. Please try again.');
       }
-
-      const deleted = await deleteComment(id);
-
-      // Invalidate article cache so comment count refreshes
-      if (deleted) await cacheService.invalidateArticleCache();
-
-      return deleted;
     },
-  })
+  }),
 );

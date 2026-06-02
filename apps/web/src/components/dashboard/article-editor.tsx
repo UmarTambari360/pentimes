@@ -1,3 +1,4 @@
+//updated with deepseek
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -32,6 +33,7 @@ import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import { CREATE_ARTICLE, UPDATE_ARTICLE } from "@/lib/graphql/queries/articles";
+import { getErrorMessage } from "@/lib/errors"; // NEW: Import error helper from updated version
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -384,7 +386,10 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
     }
 
     setSaving(true);
-    const savePromise = async () => {
+
+    // NEW: Use async/await with try/catch pattern from updated version
+    // but preserve the detailed error messaging structure
+    try {
       const client = getAuthClient();
       const slug = data.slug || slugify(data.title);
 
@@ -401,6 +406,13 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
             slug,
           },
         });
+
+        // Success toast with proper message based on status
+        toast.success(
+          data.status === "published"
+            ? "Article updated and live!"
+            : "Article saved as draft.",
+        );
         router.refresh();
       } else {
         const result = await client.request<{
@@ -416,28 +428,22 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
             slug,
           },
         });
+
+        // Success toast with proper message based on status
+        toast.success(
+          data.status === "published"
+            ? "Article published successfully!"
+            : "Article saved as draft.",
+        );
         router.push("/dashboard/articles");
       }
-    };
-
-    toast.promise(savePromise(), {
-      loading: isEditing ? "Saving changes…" : "Creating article…",
-      success: isEditing
-        ? data.status === "published"
-          ? "Article updated and live!"
-          : "Article saved as draft."
-        : data.status === "published"
-          ? "Article published successfully!"
-          : "Article saved as draft.",
-      error: (err) => {
-        const message =
-          err instanceof Error ? err.message : "Failed to save article.";
-        return message.replace("GraphQL Error: ", "");
-      },
-    });
-
-    await savePromise().catch(() => {});
-    setSaving(false);
+    } catch (err) {
+      // NEW: Use getErrorMessage helper from updated version for consistent error handling
+      const errorMessage = getErrorMessage(err);
+      toast.error(errorMessage.replace("GraphQL Error: ", ""));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleCategory = (id: string, current: string[]) => {
@@ -462,7 +468,7 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
           id="title"
           placeholder="Write a compelling headline that tells the story…"
           className={cn(
-            "text-body font-serif h-12 text-lg",
+            "text-body font-serif h-12",
             errors.title && "border-destructive",
           )}
           {...register("title")}

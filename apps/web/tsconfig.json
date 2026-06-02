@@ -38,7 +38,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
-  ],
+, "../api/src/graphql/error-formatter.ts"  ],
   "exclude": [
     "node_modules"
   ]

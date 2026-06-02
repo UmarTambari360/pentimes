@@ -1,3 +1,4 @@
+// apps/api/src/graphql/resolvers/bookmark.resolver.ts
 import { builder }      from '../builder.js';
 import {
   findBookmark,
@@ -10,6 +11,8 @@ import '../typedefs/article.typedef.js';
 import { ToggleBookmarkResultType } from '../typedefs/bookmark.typedef.js';
 import { ArticleType }              from '../typedefs/article.typedef.js';
 import { GraphQLError }             from 'graphql';
+import { ApiError }                 from '../../middleware/errorHandler.middleware.js';
+import { logger }                   from '../../helpers/logger.js';
 
 builder.mutationField('toggleBookmark', (t) =>
   t.field({
@@ -18,18 +21,23 @@ builder.mutationField('toggleBookmark', (t) =>
     args: { articleId: t.arg.string({ required: true }) },
     resolve: async (_parent, { articleId }, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
-      const userId = ctx.currentUser.id;   // ← Changed from .sub
+      const userId = ctx.currentUser.id;
 
-      const existing = await findBookmark(userId, articleId);
-      if (existing) {
-        await deleteBookmark(userId, articleId);
-        return { bookmarked: false };
+      try {
+        const existing = await findBookmark(userId, articleId);
+        if (existing) {
+          await deleteBookmark(userId, articleId);
+          return { bookmarked: false };
+        }
+        await createBookmark(userId, articleId);
+        return { bookmarked: true };
+      } catch (err) {
+        if (err instanceof GraphQLError || err instanceof ApiError) throw err;
+        logger.error('toggleBookmark mutation failed', { userId, articleId, error: err instanceof Error ? err.message : String(err) });
+        throw new GraphQLError('Failed to toggle bookmark. Please try again.');
       }
-
-      await createBookmark(userId, articleId);
-      return { bookmarked: true };
     },
-  })
+  }),
 );
 
 builder.queryField('myBookmarks', (t) =>
@@ -37,26 +45,40 @@ builder.queryField('myBookmarks', (t) =>
     type: [ArticleType],
     authScopes: { authenticated: true },
     args: {
-      limit: t.arg.int({ required: false, defaultValue: 20 }),
+      limit:  t.arg.int({ required: false, defaultValue: 20 }),
       offset: t.arg.int({ required: false, defaultValue: 0 }),
     },
     resolve: async (_parent, { limit, offset }, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
-      const bookmarks = await findBookmarksByUser(ctx.currentUser.id, limit ?? 20, offset ?? 0); // ← Changed from .sub
-      return bookmarks.map((b) => {
-        const a = b.article as any;
-        return {
-          ...a,
-          coverImage: a.coverImage ?? null,
-          excerpt: a.excerpt ?? null,
-          publishedAt: a.publishedAt ?? null,
-          likeCount: 0,
-          commentCount: 0,
-          isLikedByCurrentUser: null,      // ← Fixed field name
-          isBookmarkedByCurrentUser: true, // ← Fixed field name
-          categories: a.articleCategories?.map((ac: any) => ac.category) || [], // ← Added missing categories
-        };
-      });
+
+      try {
+        const bookmarks = await findBookmarksByUser(
+          ctx.currentUser.id,
+          limit  ?? 20,
+          offset ?? 0,
+        );
+        const result = bookmarks.map((b) => {
+          const a = b.article as Record<string, unknown>;
+          return {
+            ...a,
+            coverImage:               a['coverImage']  ?? null,
+            excerpt:                  a['excerpt']     ?? null,
+            publishedAt:              a['publishedAt'] ?? null,
+            likeCount:                0,
+            commentCount:             0,
+            isLikedByCurrentUser:     null,
+            isBookmarkedByCurrentUser: true,
+            categories: Array.isArray(a['articleCategories'])
+              ? (a['articleCategories'] as Array<{ category: unknown }>).map((ac) => ac.category)
+              : [],
+          };
+        });
+        return result as unknown as any;
+      } catch (err) {
+        if (err instanceof GraphQLError || err instanceof ApiError) throw err;
+        logger.error('myBookmarks query failed', { userId: ctx.currentUser.id, error: err instanceof Error ? err.message : String(err) });
+        throw new GraphQLError('Failed to fetch bookmarks.');
+      }
     },
-  })
+  }),
 );

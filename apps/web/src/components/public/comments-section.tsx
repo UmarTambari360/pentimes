@@ -1,20 +1,31 @@
-'use client';
+//updated with deepseek
+"use client";
 
-import { useState } from 'react';
-import { MessageCircle, Send, Pencil, Trash2, Check, X, ChevronDown } from 'lucide-react';
-import { GraphQLClient } from 'graphql-request';
-import { GET_COMMENTS } from '@/lib/graphql/queries/comments';
-import { AuthorAvatar } from '@/components/ui/author-avatar';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useComments } from '@/hooks/useComments';
-import { formatRelativeDate } from '@/lib/utils';
-import { cn } from '@/lib/utils';
-import type { CommentType, CommentConnectionResult } from '@/types';
+import { useState } from "react";
+import {
+  MessageCircle,
+  Send,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  ChevronDown,
+} from "lucide-react";
+import { GraphQLClient } from "graphql-request";
+import { GET_COMMENTS } from "@/lib/graphql/queries/comments";
+import { AuthorAvatar } from "@/components/ui/author-avatar";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useComments } from "@/hooks/useComments";
+import { formatRelativeDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors"; // NEW: Import error helper
+import { toast } from "sonner"; // NEW: Import toast for error notifications
+import type { CommentType, CommentConnectionResult } from "@/types";
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
 const PAGE_SIZE = 10;
 
 interface CommentsSectionProps {
@@ -50,6 +61,10 @@ function CommentItem({
     try {
       await onEdit(comment.id, editBody.trim());
       setEditing(false);
+      toast.success("Comment updated successfully"); // NEW: Success feedback
+    } catch (err) {
+      // NEW: Error handling with getErrorMessage
+      toast.error(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -63,8 +78,8 @@ function CommentItem({
   return (
     <div
       className={cn(
-        'flex gap-3 group transition-opacity',
-        isDeleting && 'opacity-50 pointer-events-none'
+        "flex gap-3 group transition-opacity",
+        isDeleting && "opacity-50 pointer-events-none",
       )}
     >
       <AuthorAvatar
@@ -125,8 +140,8 @@ function CommentItem({
               maxLength={2000}
               autoFocus
               onKeyDown={(e) => {
-                if (e.key === 'Escape') handleCancelEdit();
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey))
+                if (e.key === "Escape") handleCancelEdit();
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey))
                   handleSaveEdit();
               }}
             />
@@ -175,7 +190,7 @@ function CommentForm({
   onSubmit: (body: string) => Promise<unknown>;
   disabled?: boolean;
 }) {
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,7 +199,11 @@ function CommentForm({
     setSubmitting(true);
     try {
       await onSubmit(body.trim());
-      setBody('');
+      setBody("");
+      toast.success("Comment posted successfully"); // NEW: Success feedback
+    } catch (err) {
+      // NEW: Error handling with getErrorMessage
+      toast.error(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -206,7 +225,7 @@ function CommentForm({
             maxLength={2000}
             disabled={disabled || submitting}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 if (body.trim() && !submitting) handleSubmit(e as never);
               }
@@ -215,12 +234,12 @@ function CommentForm({
           <div className="flex items-center justify-between">
             <span
               className={cn(
-                'text-caption transition-colors',
+                "text-caption transition-colors",
                 remaining < 100
-                  ? 'text-amber-600'
+                  ? "text-amber-600"
                   : remaining < 50
-                  ? 'text-destructive font-semibold'
-                  : 'text-muted-foreground'
+                    ? "text-destructive font-semibold"
+                    : "text-muted-foreground",
               )}
             >
               {remaining} characters remaining
@@ -233,7 +252,7 @@ function CommentForm({
               className="gap-2"
             >
               <Send className="h-3.5 w-3.5" />
-              {submitting ? 'Posting…' : 'Post Comment'}
+              {submitting ? "Posting…" : "Post Comment"}
             </Button>
           </div>
         </div>
@@ -294,8 +313,11 @@ export function CommentsSection({
       // This is a simple append — in production you'd merge with dedup
       // For now we rely on the fact that the server returns newest-first
       setHasMore(
-        comments.length + data.comments.items.length < data.comments.total
+        comments.length + data.comments.items.length < data.comments.total,
       );
+    } catch (err) {
+      // NEW: Error handling for load more
+      toast.error(getErrorMessage(err));
     } finally {
       setLoadingMore(false);
     }
@@ -303,10 +325,14 @@ export function CommentsSection({
 
   // ── Handle delete with local pending state ─────────────────────
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this comment? This cannot be undone.')) return;
+    if (!confirm("Delete this comment? This cannot be undone.")) return;
     setDeletingIds((s) => new Set(s).add(id));
     try {
       await removeComment(id);
+      toast.success("Comment deleted successfully"); // NEW: Success feedback
+    } catch (err) {
+      // NEW: Error handling with getErrorMessage
+      toast.error(getErrorMessage(err));
     } finally {
       setDeletingIds((s) => {
         const next = new Set(s);
