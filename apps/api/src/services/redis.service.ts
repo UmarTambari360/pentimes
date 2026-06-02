@@ -1,16 +1,28 @@
-import { redis }     from '../config/redis.js';
+import { redis } from '../config/redis.js';
 import { CACHE_TTL } from '@pentimes/shared';
 
 // ── Key Factories ─────────────────────────────────────────────────
 export const CacheKeys = {
   articles: (page: number, limit: number, categorySlug?: string) =>
     `articles:list:${page}:${limit}${categorySlug ? `:cat:${categorySlug}` : ''}`,
+
   article: (slug: string) => `articles:single:${slug}`,
+
   categories: () => 'categories:all',
-  programs: (status?: string) => `programs:list${status ? `:${status}` : ''}`,
+
+  programs: (status?: string) =>
+    `programs:list${status ? `:${status}` : ''}`,
+
+  /**
+   * Normalise the query to lowercase before hashing into the key.
+   * Without this, "Nigeria" and "nigeria" would be two separate cache
+   * entries — wasting memory and bypassing cached results.
+   */
   search: (query: string, offset: number, limit: number) =>
-    `search:${query}:${offset}:${limit}`,
+    `search:${query.toLowerCase().trim()}:${offset}:${limit}`,
+
   session: (userId: string) => `session:${userId}`,
+
   refreshToken: (userId: string) => `refresh:${userId}`,
 } as const;
 
@@ -50,6 +62,7 @@ export const cacheService = {
   async invalidateArticleCache(slug?: string): Promise<void> {
     const tasks: Promise<void>[] = [
       this.delPattern('articles:list:*'),
+      // Invalidate all search caches too — new/updated articles affect results
       this.delPattern('search:*'),
     ];
     if (slug) tasks.push(this.del(CacheKeys.article(slug)));
@@ -64,7 +77,11 @@ export const cacheService = {
   },
 
   async setRefreshToken(userId: string, token: string): Promise<void> {
-    await redis.setex(CacheKeys.refreshToken(userId), 7 * 24 * 60 * 60, token);
+    await redis.setex(
+      CacheKeys.refreshToken(userId),
+      7 * 24 * 60 * 60,
+      token,
+    );
   },
 
   async getRefreshToken(userId: string): Promise<string | null> {
@@ -77,18 +94,18 @@ export const cacheService = {
 
   async setSession(
     userId: string,
-    session: { id: string; role: string; email: string }
+    session: { id: string; role: string; email: string },
   ): Promise<void> {
     await redis.setex(
       CacheKeys.session(userId),
       CACHE_TTL.ARTICLES,
-      JSON.stringify(session)
+      JSON.stringify(session),
     );
   },
 
   async getSession(userId: string) {
     return this.get<{ id: string; role: string; email: string }>(
-      CacheKeys.session(userId)
+      CacheKeys.session(userId),
     );
   },
 

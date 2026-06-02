@@ -10,27 +10,30 @@ import {
   incrementArticleViews,
   getArticleCounts,
   searchArticles,
-}                                   from '../../queries/article.queries.js';
-import { findLike }                 from '../../queries/like.queries.js';
-import { findBookmark }             from '../../queries/bookmark.queries.js';
-import { cacheService, CacheKeys }  from '../../services/redis.service.js';
-import { slugify }                  from '../../helpers/slugify.js';
-import { calculateReadingTime }     from '../../helpers/reading-time.js';
-import { CACHE_TTL }                from '@pentimes/shared';
-import { 
+} from '../../queries/article.queries.js';
+import { findLike } from '../../queries/like.queries.js';
+import { findBookmark } from '../../queries/bookmark.queries.js';
+import { cacheService, CacheKeys } from '../../services/redis.service.js';
+import { slugify } from '../../helpers/slugify.js';
+import { calculateReadingTime } from '../../helpers/reading-time.js';
+import { CACHE_TTL } from '@pentimes/shared';
+import {
   CreateArticleInput,
-  UpdateArticleInput, 
-  ArticleFiltersInput }             from '../inputs.js';
+  UpdateArticleInput,
+  ArticleFiltersInput,
+} from '../inputs.js';
 
-// Import type references (important!)
 import '../typedefs/article.typedef.js';
-import { ArticleType, ArticleConnectionType } from '../typedefs/article.typedef.js';
-import type { ArticleFull }                   from '../../types/article.type.ts';
-import { GraphQLError }                       from 'graphql';
+import {
+  ArticleType,
+  ArticleConnectionType,
+} from '../typedefs/article.typedef.js';
+import type { ArticleFull } from '../../types/article.type.ts';
+import { GraphQLError } from 'graphql';
 
 async function enrichArticle(
-  raw: any, 
-  userId?: string
+  raw: any,
+  userId?: string,
 ): Promise<ArticleFull | null> {
   if (!raw) return null;
 
@@ -60,7 +63,8 @@ async function enrichArticle(
   } as ArticleFull;
 }
 
-// Queries
+// ── Queries ──────────────────────────────────────────────────────────────────
+
 builder.queryField('articles', (t) =>
   t.field({
     type: ArticleConnectionType,
@@ -77,10 +81,13 @@ builder.queryField('articles', (t) =>
       const cacheKey = CacheKeys.articles(
         Math.floor((f.offset ?? 0) / (f.limit ?? 12)),
         f.limit ?? 12,
-        f.categorySlug
+        f.categorySlug,
       );
 
-      const cached = await cacheService.get<{ items: ArticleFull[]; total: number }>(cacheKey);
+      const cached = await cacheService.get<{
+        items: ArticleFull[];
+        total: number;
+      }>(cacheKey);
 
       if (cached && !f.authorId && f.status === 'published') {
         return {
@@ -92,9 +99,9 @@ builder.queryField('articles', (t) =>
       const { items, total } = await findArticles(f);
       const enriched = await Promise.all(items.map((a) => enrichArticle(a)));
 
-      const result = { 
-        items: enriched.filter(Boolean) as ArticleFull[], 
-        total 
+      const result = {
+        items: enriched.filter(Boolean) as ArticleFull[],
+        total,
       };
 
       if (f.status === 'published' && !f.authorId) {
@@ -106,7 +113,7 @@ builder.queryField('articles', (t) =>
         hasMore: (f.offset ?? 0) + (f.limit ?? 12) < total,
       };
     },
-  })
+  }),
 );
 
 builder.queryField('article', (t) =>
@@ -118,7 +125,7 @@ builder.queryField('article', (t) =>
       const cacheKey = CacheKeys.article(slug);
       const cached = await cacheService.get<ArticleFull>(cacheKey);
 
-      let raw = cached ? null : await findArticleBySlug(slug);
+      const raw = cached ? null : await findArticleBySlug(slug);
       if (!raw && !cached) return null;
 
       const articleId = (raw ?? cached)!.id;
@@ -129,14 +136,26 @@ builder.queryField('article', (t) =>
       const result = await enrichArticle(raw ?? cached, ctx.currentUser?.id);
 
       if (result && !ctx.currentUser) {
-        await cacheService.set(cacheKey, result, CACHE_TTL.ARTICLES); // or specific TTL
+        await cacheService.set(cacheKey, result, CACHE_TTL.ARTICLE_SINGLE);
       }
 
       return result;
     },
-  })
+  }),
 );
 
+/**
+ * searchArticles resolver.
+ *
+ * Cache strategy:
+ * - Normalise the query to lowercase + trimmed before building the cache
+ *   key. This prevents "Nigeria" and "nigeria" from being two separate
+ *   cache entries.
+ * - TTL is short (CACHE_TTL.SEARCH = 2 minutes) because search results
+ *   should reflect newly published articles quickly.
+ * - We do NOT cache search results per-user (no bookmarked/liked state
+ *   in search results — those are fetched on the article page).
+ */
 builder.queryField('searchArticles', (t) =>
   t.field({
     type: ArticleConnectionType,
@@ -146,39 +165,57 @@ builder.queryField('searchArticles', (t) =>
       offset: t.arg.int({ required: false, defaultValue: 0 }),
     },
     resolve: async (_parent, { query, limit, offset }) => {
-      const cacheKey = CacheKeys.search(query, offset ?? 0, limit ?? 12);
-      const cached = await cacheService.get<{ items: ArticleFull[]; total: number }>(cacheKey);
+      const normalisedQuery = query.trim().toLowerCase();
+      const safeLimit = limit ?? 12;
+      const safeOffset = offset ?? 0;
+
+      // Reject trivially short queries at the API layer
+      if (normalisedQuery.length < 2) {
+        return { items: [], total: 0, hasMore: false };
+      }
+
+      const cacheKey = CacheKeys.search(normalisedQuery, safeOffset, safeLimit);
+      const cached = await cacheService.get<{
+        items: ArticleFull[];
+        total: number;
+      }>(cacheKey);
 
       if (cached) {
         return {
           ...cached,
-          hasMore: (offset ?? 0) + (limit ?? 12) < cached.total,
+          hasMore: safeOffset + safeLimit < cached.total,
         };
       }
 
-      const { items, total } = await searchArticles(query, limit ?? 12, offset ?? 0);
+      const { items, total } = await searchArticles(
+        normalisedQuery,
+        safeLimit,
+        safeOffset,
+      );
+
       const enriched = await Promise.all(items.map((a) => enrichArticle(a)));
 
-      const result = { 
-        items: enriched.filter(Boolean) as ArticleFull[], 
-        total 
+      const result = {
+        items: enriched.filter(Boolean) as ArticleFull[],
+        total,
       };
 
       await cacheService.set(cacheKey, result, CACHE_TTL.SEARCH);
 
       return {
         ...result,
-        hasMore: (offset ?? 0) + (limit ?? 12) < total,
+        hasMore: safeOffset + safeLimit < total,
       };
     },
-  })
+  }),
 );
 
-// Mutations
+// ── Mutations ─────────────────────────────────────────────────────────────────
+
 builder.mutationField('createArticle', (t) =>
   t.field({
     type: ArticleType,
-    authScopes: { isAuthor: true }, // Better than manual check
+    authScopes: { isAuthor: true },
     args: { input: t.arg({ type: CreateArticleInput, required: true }) },
     resolve: async (_parent, { input }, ctx) => {
       if (!ctx.currentUser) throw new GraphQLError('Unauthorized');
@@ -205,7 +242,7 @@ builder.mutationField('createArticle', (t) =>
       const full = await findArticleById(article.id);
       return enrichArticle(full);
     },
-  })
+  }),
 );
 
 builder.mutationField('updateArticle', (t) =>
@@ -222,11 +259,13 @@ builder.mutationField('updateArticle', (t) =>
       const existing = await findArticleById(id);
       if (!existing) throw new GraphQLError('Article not found');
 
-      if (existing.authorId !== ctx.currentUser.id && ctx.currentUser.role !== 'admin') {
+      if (
+        existing.authorId !== ctx.currentUser.id &&
+        ctx.currentUser.role !== 'admin'
+      ) {
         throw new GraphQLError('You can only edit your own articles');
       }
 
-      // ... rest of update logic remains mostly the same
       const updates: any = {};
       if (input.title) {
         updates.title = input.title;
@@ -238,7 +277,8 @@ builder.mutationField('updateArticle', (t) =>
         updates.content = input.content;
         updates.readingTime = calculateReadingTime(input.content);
       }
-      if (input.coverImage !== undefined) updates.coverImage = input.coverImage ?? null;
+      if (input.coverImage !== undefined)
+        updates.coverImage = input.coverImage ?? null;
       if (input.status) {
         updates.status = input.status as 'draft' | 'published';
         if (input.status === 'published' && existing.status === 'draft') {
@@ -254,7 +294,7 @@ builder.mutationField('updateArticle', (t) =>
       const full = await findArticleById(id);
       return enrichArticle(full);
     },
-  })
+  }),
 );
 
 builder.mutationField('deleteArticle', (t) =>
@@ -268,7 +308,10 @@ builder.mutationField('deleteArticle', (t) =>
       const existing = await findArticleById(id);
       if (!existing) throw new GraphQLError('Article not found');
 
-      if (existing.authorId !== ctx.currentUser.id && ctx.currentUser.role !== 'admin') {
+      if (
+        existing.authorId !== ctx.currentUser.id &&
+        ctx.currentUser.role !== 'admin'
+      ) {
         throw new GraphQLError('You can only delete your own articles');
       }
 
@@ -277,5 +320,5 @@ builder.mutationField('deleteArticle', (t) =>
 
       return deleted;
     },
-  })
+  }),
 );

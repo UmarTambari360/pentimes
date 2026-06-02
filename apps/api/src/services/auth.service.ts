@@ -1,4 +1,3 @@
-// src/services/auth.service.ts
 import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
