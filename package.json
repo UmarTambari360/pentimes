@@ -25,7 +25,11 @@
     "docker:dev:d": "docker compose up --build -d",
     "docker:prod": "docker compose -f docker-compose.prod.yml up --build",
     "docker:down": "docker compose down",
-    "docker:clean": "docker compose down -v --remove-orphans"
+    "docker:clean": "docker compose down -v --remove-orphans",
+    "test": "vitest run --workspace",
+    "test:web": "pnpm --filter web test",
+    "test:api": "pnpm --filter api test",
+    "test:e2e": "pnpm --filter web test:e2e"
   },
   "dependencies": {
     "@tiptap/core": "^3.23.6",
