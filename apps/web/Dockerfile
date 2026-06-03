@@ -15,7 +15,12 @@ RUN apk add --no-cache libc6-compat
 
 RUN npm install -g pnpm@9.15.9
 
-RUN pnpm config set registry https://registry.npmmirror.com
+RUN pnpm config set registry https://registry.npmjs.org/ && \
+    pnpm config set store-dir /pnpm/store && \
+    pnpm config set fetch-retries 5 && \
+    pnpm config set fetch-retry-maxtimeout 120000 && \
+    pnpm config set fetch-timeout 300000 && \
+    pnpm config set network-concurrency 4
 
 WORKDIR /app
 
@@ -26,7 +31,8 @@ COPY packages/shared/package.json ./packages/shared/
 # ── Stage 2: Development ───────────────────────────────────────────
 FROM base AS development
 
-RUN pnpm install --frozen-lockfile || pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store-web,target=/pnpm/store \
+    pnpm --filter web... install --frozen-lockfile --prefer-offline
 
 COPY apps/web ./apps/web
 COPY packages/shared ./packages/shared
@@ -40,7 +46,8 @@ CMD ["pnpm", "dev"]
 # ── Stage 3: Builder ───────────────────────────────────────────────
 FROM base AS builder
 
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store-web,target=/pnpm/store \
+    pnpm --filter web... install --frozen-lockfile --prefer-offline
 
 COPY apps/web ./apps/web
 COPY packages/shared ./packages/shared
