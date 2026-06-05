@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
-import { Camera, Loader2, Shield } from "lucide-react";
+import { Shield, Loader2 } from "lucide-react";
 import {
   UPDATE_PROFILE_MUTATION,
   CHANGE_PASSWORD_MUTATION,
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AuthorAvatar } from "@/components/ui/author-avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { ImageUpload } from "../public/image-upload";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
 
@@ -34,6 +35,7 @@ const ProfileSchema = z.object({
     .max(500, "Bio cannot exceed 500 characters")
     .trim()
     .optional(),
+  avatar: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 
 const PasswordSchema = z
@@ -58,11 +60,6 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ user }: ProfileFormProps) {
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(
-    user.avatar,
-  );
-  const [avatarUploading, setAvatarUploading] = useState(false);
-
   const getAuthClient = () => {
     const token = document.cookie
       .split("; ")
@@ -84,8 +81,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
     defaultValues: {
       name: user.name,
       bio: user.bio ?? "",
+      avatar: user.avatar ?? "",
     },
   });
+
+  const watchAvatar = watch("avatar");
 
   const {
     register: regPw,
@@ -103,7 +103,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         input: {
           name: data.name,
           bio: data.bio || null,
-          avatar: avatarPreview || null,
+          avatar: data.avatar || null,
         },
       });
     };
@@ -138,61 +138,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
     });
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Avatar must be under 5MB");
-      return;
-    }
-
-    setAvatarUploading(true);
-    const promise = new Promise<string>(async (resolve, reject) => {
-      try {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64 = (reader.result as string).split(",")[1];
-          const token =
-            document.cookie
-              .split("; ")
-              .find((r) => r.startsWith("access_token="))
-              ?.split("=")[1] ?? "";
-
-          const response = await fetch(`${API_URL}/upload/avatar`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              image: `data:${file.type};base64,${base64}`,
-            }),
-          });
-
-          if (!response.ok) {
-            reject(new Error("Upload failed"));
-            return;
-          }
-          const { url } = (await response.json()) as { url: string };
-          setAvatarPreview(url);
-          resolve(url);
-        };
-        reader.readAsDataURL(file);
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    toast.promise(promise, {
-      loading: "Uploading avatar…",
-      success: "Avatar uploaded! Save your profile to apply.",
-      error: "Failed to upload avatar.",
-    });
-
-    await promise.catch(() => {});
-    setAvatarUploading(false);
-  };
-
   const roleVariant: Record<
     string,
     "default" | "amber" | "success" | "published"
@@ -220,30 +165,20 @@ export function ProfileForm({ user }: ProfileFormProps) {
               author={{
                 id: user.id,
                 name: user.name,
-                avatar: avatarPreview,
+                avatar: watchAvatar,
               }}
               size="lg"
             />
-            <label
-              className={cn(
-                "absolute -bottom-1 -right-1 w-7 h-7 bg-amber-500 hover:bg-amber-600 text-ink-900 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-md",
-                avatarUploading && "opacity-70 pointer-events-none",
-              )}
-              title="Upload new avatar"
-            >
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleAvatarUpload}
-                className="sr-only"
-                disabled={avatarUploading}
+            <div className="absolute -bottom-1 -right-1">
+              <ImageUpload
+                endpoint="avatar"
+                value={watchAvatar}
+                onChange={(url) => setValue("avatar", url || "")}
+                aspectRatio="square"
+                className="w-7 h-7 rounded-full overflow-hidden [&>div]:!aspect-square [&>div]:!h-7 [&>div]:!w-7"
+                placeholder=""
               />
-              {avatarUploading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Camera className="h-3.5 w-3.5" />
-              )}
-            </label>
+            </div>
           </div>
 
           {/* Account details */}

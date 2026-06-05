@@ -1,4 +1,3 @@
-//updated with deepseek
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -8,8 +7,8 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GraphQLClient } from "graphql-request";
+import { ImageUpload } from "../public/image-upload";
 import {
-  ImagePlus,
   X,
   Loader2,
   Bold,
@@ -33,13 +32,12 @@ import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import { CREATE_ARTICLE, UPDATE_ARTICLE } from "@/lib/graphql/queries/articles";
-import { getErrorMessage } from "@/lib/errors"; // NEW: Import error helper from updated version
+import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { ArticleFullType, CategoryType } from "@/types";
@@ -242,8 +240,6 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
   const router = useRouter();
   const isEditing = Boolean(article);
   const [saving, setSaving] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
-  const [coverPreview, setCoverPreview] = useState(article?.coverImage ?? "");
   const [previewMode, setPreviewMode] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEditing);
 
@@ -311,66 +307,6 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
     });
   };
 
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image must be under 10MB");
-      return;
-    }
-
-    setImageUploading(true);
-    const uploadPromise = new Promise<string>(async (resolve, reject) => {
-      try {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64 = (reader.result as string).split(",")[1];
-          const token =
-            document.cookie
-              .split("; ")
-              .find((r) => r.startsWith("access_token="))
-              ?.split("=")[1] ?? "";
-
-          const response = await fetch(`${API_URL}/upload/article-cover`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              image: `data:${file.type};base64,${base64}`,
-              fileName: file.name.replace(/\.[^/.]+$/, ""),
-            }),
-          });
-
-          if (!response.ok) {
-            reject(new Error("Upload failed"));
-            return;
-          }
-
-          const { url } = (await response.json()) as { url: string };
-          setValue("coverImage", url);
-          setCoverPreview(url);
-          resolve(url);
-        };
-        reader.readAsDataURL(file);
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    toast.promise(uploadPromise, {
-      loading: "Uploading cover image…",
-      success: "Cover image uploaded!",
-      error: "Failed to upload image. Please try again.",
-    });
-
-    await uploadPromise.catch(() => {});
-    setImageUploading(false);
-  };
-
   const onSubmit = async (data: EditorInput) => {
     const content = editor?.getHTML() ?? "";
 
@@ -387,8 +323,6 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
 
     setSaving(true);
 
-    // NEW: Use async/await with try/catch pattern from updated version
-    // but preserve the detailed error messaging structure
     try {
       const client = getAuthClient();
       const slug = data.slug || slugify(data.title);
@@ -407,7 +341,6 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
           },
         });
 
-        // Success toast with proper message based on status
         toast.success(
           data.status === "published"
             ? "Article updated and live!"
@@ -429,7 +362,6 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
           },
         });
 
-        // Success toast with proper message based on status
         toast.success(
           data.status === "published"
             ? "Article published successfully!"
@@ -438,7 +370,6 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
         router.push("/dashboard/articles");
       }
     } catch (err) {
-      // NEW: Use getErrorMessage helper from updated version for consistent error handling
       const errorMessage = getErrorMessage(err);
       toast.error(errorMessage.replace("GraphQL Error: ", ""));
     } finally {
@@ -560,56 +491,20 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
           </span>
         </Label>
 
-        {coverPreview ? (
-          <div className="relative rounded-lg overflow-hidden aspect-[16/9] max-h-64 bg-muted border border-border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverPreview}
-              alt="Cover preview"
-              className="w-full h-full object-cover"
+        <Controller
+          control={control}
+          name="coverImage"
+          render={({ field }) => (
+            <ImageUpload
+              endpoint="article-cover"
+              value={field.value}
+              onChange={field.onChange}
+              aspectRatio="video"
+              disabled={saving}
+              placeholder="Click or drag a cover image here to upload"
             />
-            <button
-              type="button"
-              onClick={() => {
-                setValue("coverImage", "");
-                setCoverPreview("");
-              }}
-              className="absolute top-3 right-3 bg-black/70 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
-              title="Remove cover image"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div className="absolute bottom-3 left-3 bg-black/60 text-white text-caption px-2 py-1 rounded">
-              Cover image
-            </div>
-          </div>
-        ) : (
-          <label className="flex flex-col items-center justify-center h-44 rounded-lg border-2 border-dashed border-border hover:border-amber-400 cursor-pointer transition-colors bg-muted/10 hover:bg-amber-50/30 dark:hover:bg-amber-950/10">
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleCoverUpload}
-              className="sr-only"
-              disabled={imageUploading}
-            />
-            {imageUploading ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-                <p className="text-caption text-muted-foreground">Uploading…</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-center px-6">
-                <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                <p className="text-body-sm text-muted-foreground">
-                  Click to upload cover image
-                </p>
-                <p className="text-caption text-muted-foreground">
-                  JPG, PNG, WebP up to 10MB
-                </p>
-              </div>
-            )}
-          </label>
-        )}
+          )}
+        />
       </div>
 
       {/* ── Categories ── */}
@@ -766,7 +661,7 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
           <Button
             type="submit"
             variant="amber"
-            disabled={saving || imageUploading}
+            disabled={saving}
             className="gap-2 min-w-[140px]"
           >
             {saving ? (
