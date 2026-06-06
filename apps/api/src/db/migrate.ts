@@ -7,59 +7,83 @@ import { fileURLToPath } from 'url';
 
 const { Pool } = pg;
 
+// Load env — supports both monorepo root and running from dist/
 dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env.production') });
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname  = path.dirname(__filename);
 
 /**
  * Standalone migration runner.
  *
- * Why a separate file instead of running migrations inline in index.ts?
- * Running migrations on every server start is dangerous in production —
- * if two instances start simultaneously (e.g. a rolling deploy), they
- * race each other and can corrupt the migration history table.
+ * WHY a separate file instead of running migrations inline in index.ts?
  *
- * Instead, migrations run as a one-off step in the deployment pipeline,
- * before the new server instances come up. This file is that step.
+ * Running migrations on every server start is dangerous in production:
+ * if two instances start simultaneously (rolling deploy), they race
+ * each other and can corrupt the migration history table.
  *
- * In Docker: CMD ["node", "dist/db/migrate.js"] runs first,
- * then the main server starts.
+ * Instead, migrations run as a one-off step BEFORE the new server
+ * instances come up. In our Dockerfile CMD, we run:
+ *   node dist/db/migrate.js && node dist/index.js
  *
- * Drizzle tracks applied migrations in a __drizzle_migrations table
- * it creates automatically. Running this file is idempotent — it only
- * applies migrations that have not been applied yet.
+ * This guarantees exactly-once execution per deployment.
+ *
+ * Drizzle tracks applied migrations in __drizzle_migrations and is
+ * idempotent — re-running this file against an up-to-date database
+ * is safe and fast.
  */
-async function runMigrations() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error(
-      'DATABASE_URL is not defined. Cannot run migrations.'
-    );
+async function runMigrations(): Promise<void> {
+  if (!process.env['DATABASE_URL']) {
+    console.error(JSON.stringify({
+      level: 'error',
+      event: 'migration_failed',
+      message: 'DATABASE_URL is not defined. Cannot run migrations.',
+      ts: new Date().toISOString(),
+    }));
+    process.exit(1);
   }
 
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: process.env['DATABASE_URL'],
     max: 1,
-    connectionTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 15_000,
   });
 
   const db = drizzle(pool);
 
-  console.log('[Migrations] Starting...');
-  console.log(`[Migrations] Target: ${process.env.DATABASE_URL.replace(/:\/\/.*@/, '://<credentials>@')}`);
+  const sanitisedUrl = process.env['DATABASE_URL'].replace(/:\/\/.*@/, '://<credentials>@');
+
+  console.log(JSON.stringify({
+    level: 'info',
+    event: 'migration_started',
+    target: sanitisedUrl,
+    ts: new Date().toISOString(),
+  }));
 
   try {
-    await migrate(db, {
-      migrationsFolder: path.resolve(__dirname, 'migrations'),
-    });
+    // Resolve migrations folder relative to THIS file, whether running
+    // from src/ (ts-node) or from dist/ (compiled JS)
+    const migrationsFolder = path.resolve(__dirname, 'migrations');
 
-    console.log('[Migrations] All migrations applied successfully.');
+    await migrate(db, { migrationsFolder });
+
+    console.log(JSON.stringify({
+      level: 'info',
+      event: 'migration_complete',
+      message: 'All migrations applied successfully.',
+      ts: new Date().toISOString(),
+    }));
   } catch (error) {
-    console.error('[Migrations] Migration failed:', error);
+    console.error(JSON.stringify({
+      level: 'error',
+      event: 'migration_failed',
+      message: error instanceof Error ? error.message : String(error),
+      ts: new Date().toISOString(),
+    }));
     process.exit(1);
   } finally {
     await pool.end();
-    console.log('[Migrations] Connection pool closed.');
   }
 }
 

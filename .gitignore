@@ -1,37 +1,54 @@
-# Dependencies
+# ── Dependencies ─────────────────────────────────────────────────
 node_modules/
 .pnp
 .pnp.js
 
-# Build outputs
+# ── Build outputs ────────────────────────────────────────────────
 dist/
-build/
 .next/
 out/
+build/
+*.tsbuildinfo
 
-# Environment files
+# ── Environment variables — NEVER commit these ────────────────────
 .env
 .env.local
-.env.*.local
-!.env.example
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+# .env.example and .env.production.example are safe to commit
 
-# Logs
+# ── Logs ─────────────────────────────────────────────────────────
+logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*
 
-# OS
+# ── OS ───────────────────────────────────────────────────────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Editor
-.vscode/settings.json
+# ── IDE ───────────────────────────────────────────────────────────
+.vscode/
 .idea/
 *.swp
 *.swo
 
-# TypeScript
-*.tsbuildinfo
+# ── Docker ────────────────────────────────────────────────────────
+# Keep docker-compose files tracked
 
-# Drizzle
+# ── Misc ──────────────────────────────────────────────────────────
+.cache/
+coverage/
+.nyc_output/
+
+#Drizzle
 drizzle/

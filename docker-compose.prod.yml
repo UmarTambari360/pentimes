@@ -1,8 +1,5 @@
-version: '3.9'
-
 # ──────────────────────────────────────────────────────────────────
 # Pen Times Magazine — Production Docker Compose
-# Usage: docker compose -f docker-compose.prod.yml up --build
 #
 # Key differences from development:
 #   - DB and Redis ports NOT exposed to host (internal only)
@@ -10,10 +7,13 @@ version: '3.9'
 #   - Multi-stage production image targets used
 #   - Structured JSON log rotation configured
 #   - Redis password required
+#   - Migrations run inside the API container CMD before server start
+#   - Optimized health checks for faster recovery
 # ──────────────────────────────────────────────────────────────────
 
 services:
 
+  # ── PostgreSQL ──────────────────────────────────────────────────
   postgres:
     image: postgres:16.3-alpine3.20
     container_name: pentimes_postgres_prod
@@ -22,24 +22,26 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     expose:
       - "5432"
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 5
-      start_period: 30s
+      start_period: 10s
     networks:
       - pentimes_network_prod
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-file: "3"
+        max-file: "5"
 
+  # ── Redis ───────────────────────────────────────────────────────
   redis:
     image: redis:7.2.5-alpine3.20
     container_name: pentimes_redis_prod
@@ -57,17 +59,19 @@ services:
       - redis_data_prod:/data
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 5
+      start_period: 5s
     networks:
       - pentimes_network_prod
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-file: "3"
+        max-file: "5"
 
+  # ── API ─────────────────────────────────────────────────────────
   api:
     build:
       context: .
@@ -81,13 +85,13 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      API_PORT: 4000
     expose:
       - "4000"
+    # Start in parallel with postgres/redis — API retries internally
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     networks:
       - pentimes_network_prod
     healthcheck:
@@ -95,43 +99,69 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 30s  # Reduced from 60s
     logging:
       driver: "json-file"
       options:
         max-size: "20m"
-        max-file: "5"
+        max-file: "10"
 
+  # ── Web ─────────────────────────────────────────────────────────
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
       target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api:4000}
+        NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
     container_name: pentimes_web_prod
     restart: always
     env_file:
       - .env.production
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api:4000}  # Added for runtime
     ports:
       - "3000:3000"
-    depends_on:
-      - api
+    # No depends_on – Next.js can start independently
     networks:
       - pentimes_network_prod
     logging:
       driver: "json-file"
       options:
         max-size: "20m"
-        max-file: "5"
+        max-file: "10"
 
+  # ── Nginx Reverse Proxy ─────────────────────────────────────────
+  # Uncomment when you have SSL certs configured
+  # nginx:
+  #   image: nginx:1.27.0-alpine3.19
+  #   container_name: pentimes_nginx_prod
+  #   restart: always
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - web
+  #     - api
+  #   networks:
+  #     - pentimes_network_prod
+
+# ── Named Volumes ────────────────────────────────────────────────
 volumes:
   postgres_data_prod:
     driver: local
   redis_data_prod:
     driver: local
 
+# ── Networks ─────────────────────────────────────────────────────
 networks:
   pentimes_network_prod:
     driver: bridge

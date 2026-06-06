@@ -7,16 +7,11 @@
 #   postgres → PostgreSQL 16              (port 5432)
 #   redis    → Redis 7                    (port 6379)
 #
-# Startup optimizations vs original:
+# Startup optimizations:
 #   - api no longer waits for postgres/redis to be "healthy" before
 #     starting — it starts in parallel and retries internally.
-#     The API's own healthcheck handles readiness.
-#   - Tighter health check intervals so services are marked ready
-#     sooner (5s interval instead of 10s, 3s timeout instead of 5s)
-#   - node_modules volume mounts use named volumes so they persist
-#     across restarts without reinstalling
-#   - web depends_on api using "service_started" (not "healthy")
-#     since Next.js doesn't need the API to be fully ready at boot
+#   - Tighter health check intervals (5s instead of 10s)
+#   - Selective volume mounts for better performance
 # ──────────────────────────────────────────────────────────────────
 
 services:
@@ -38,7 +33,6 @@ services:
       - ./scripts/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      # Tighter interval: marks healthy ~5s sooner than original
       interval: 5s
       timeout: 3s
       retries: 5
@@ -90,15 +84,11 @@ services:
     volumes:
       - ./apps/api/src:/app/apps/api/src
       - ./packages/shared:/app/packages/shared
-      # Named volume keeps node_modules from the image intact —
-      # host source changes don't trigger a reinstall
       - api_node_modules:/app/node_modules
       - api_app_node_modules:/app/apps/api/node_modules
       - shared_node_modules:/app/packages/shared/node_modules
     # Start alongside postgres/redis — the API retries DB/Redis
-    # connections internally (see redis.ts retryStrategy and pg pool
-    # connectionTimeoutMillis). This removes the ~30s wait for both
-    # services to pass health checks before the API even boots.
+    # connections internally (see redis.ts retryStrategy)
     depends_on:
       - postgres
       - redis
@@ -117,7 +107,7 @@ services:
       - .env
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://api:4000
+      NEXT_PUBLIC_API_URL: http://api:4000  # ← FIXED: use container name, not localhost
       WEB_PORT: ${WEB_PORT:-3000}
     ports:
       - "${WEB_PORT:-3000}:3000"
@@ -128,8 +118,6 @@ services:
       - web_node_modules:/app/node_modules
       - web_app_node_modules:/app/apps/web/node_modules
       - web_next_cache:/app/apps/web/.next
-    # service_started (not service_healthy) — Next.js dev server
-    # doesn't need the API to be fully accepting requests at boot
     depends_on:
       - api
     networks:
@@ -141,10 +129,6 @@ volumes:
     driver: local
   redis_data:
     driver: local
-  # node_modules live inside named volumes so:
-  #   1. They are never overwritten by host bind mounts
-  #   2. They persist across restarts (no reinstall on `up`)
-  #   3. The image's installed modules are used as-is
   api_node_modules:
     driver: local
   api_app_node_modules:
