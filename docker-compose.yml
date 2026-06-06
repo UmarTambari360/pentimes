@@ -1,6 +1,3 @@
-#commented out as noted to be obsolete
-#version: '3.9'
-
 # ──────────────────────────────────────────────────────────────────
 # Pen Times Magazine — Development Docker Compose
 #
@@ -10,9 +7,16 @@
 #   postgres → PostgreSQL 16              (port 5432)
 #   redis    → Redis 7                    (port 6379)
 #
-# WHY specific image tags and not 'latest':
-#   'latest' can silently pull breaking changes on rebuild.
-#   Pinning guarantees identical environments across all machines.
+# Startup optimizations vs original:
+#   - api no longer waits for postgres/redis to be "healthy" before
+#     starting — it starts in parallel and retries internally.
+#     The API's own healthcheck handles readiness.
+#   - Tighter health check intervals so services are marked ready
+#     sooner (5s interval instead of 10s, 3s timeout instead of 5s)
+#   - node_modules volume mounts use named volumes so they persist
+#     across restarts without reinstalling
+#   - web depends_on api using "service_started" (not "healthy")
+#     since Next.js doesn't need the API to be fully ready at boot
 # ──────────────────────────────────────────────────────────────────
 
 services:
@@ -34,10 +38,11 @@ services:
       - ./scripts/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
+      # Tighter interval: marks healthy ~5s sooner than original
+      interval: 5s
+      timeout: 3s
       retries: 5
-      start_period: 30s
+      start_period: 10s
     networks:
       - pentimes_network
 
@@ -46,7 +51,6 @@ services:
     image: redis:7.2.5-alpine3.20
     container_name: pentimes_redis
     restart: unless-stopped
-    # AOF persistence: survive container restarts without data loss
     command: >
       redis-server
       --appendonly yes
@@ -59,10 +63,10 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 5
-      start_period: 10s
+      start_period: 5s
     networks:
       - pentimes_network
 
@@ -84,16 +88,20 @@ services:
     ports:
       - "${API_PORT:-4000}:4000"
     volumes:
-      - ./apps/api:/app/apps/api
+      - ./apps/api/src:/app/apps/api/src
       - ./packages/shared:/app/packages/shared
-      # Prevent host node_modules from overwriting container's
-      - api_node_modules:/app/apps/api/node_modules
+      # Named volume keeps node_modules from the image intact —
+      # host source changes don't trigger a reinstall
+      - api_node_modules:/app/node_modules
+      - api_app_node_modules:/app/apps/api/node_modules
       - shared_node_modules:/app/packages/shared/node_modules
+    # Start alongside postgres/redis — the API retries DB/Redis
+    # connections internally (see redis.ts retryStrategy and pg pool
+    # connectionTimeoutMillis). This removes the ~30s wait for both
+    # services to pass health checks before the API even boots.
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     networks:
       - pentimes_network
 
@@ -114,10 +122,14 @@ services:
     ports:
       - "${WEB_PORT:-3000}:3000"
     volumes:
-      - ./apps/web:/app/apps/web
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
       - ./packages/shared:/app/packages/shared
-      - web_node_modules:/app/apps/web/node_modules
+      - web_node_modules:/app/node_modules
+      - web_app_node_modules:/app/apps/web/node_modules
       - web_next_cache:/app/apps/web/.next
+    # service_started (not service_healthy) — Next.js dev server
+    # doesn't need the API to be fully accepting requests at boot
     depends_on:
       - api
     networks:
@@ -129,11 +141,19 @@ volumes:
     driver: local
   redis_data:
     driver: local
+  # node_modules live inside named volumes so:
+  #   1. They are never overwritten by host bind mounts
+  #   2. They persist across restarts (no reinstall on `up`)
+  #   3. The image's installed modules are used as-is
   api_node_modules:
+    driver: local
+  api_app_node_modules:
     driver: local
   shared_node_modules:
     driver: local
   web_node_modules:
+    driver: local
+  web_app_node_modules:
     driver: local
   web_next_cache:
     driver: local

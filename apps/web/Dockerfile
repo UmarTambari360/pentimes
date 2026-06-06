@@ -1,11 +1,11 @@
 # ──────────────────────────────────────────────────────────────────
 # Pen Times Magazine — Web Dockerfile
-# Multi-stage: base → development → builder → production
-# Build context: monorepo root
+# Multi-stage: base → deps → development → builder → production
 #
-# WHY standalone output:
-#   next.config.ts sets output: 'standalone' which copies only the
-#   minimum server files needed. Reduces image from ~1GB to ~200MB.
+# Key optimizations vs original:
+#   - Separate "deps" stage so installs survive source changes
+#   - next dev launched directly; shared pre-build not required in
+#     dev because tsconfig.json maps @pentimes/shared → TS source
 # ──────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Base ──────────────────────────────────────────────────
@@ -24,15 +24,19 @@ RUN pnpm config set registry https://registry.npmjs.org/ && \
 
 WORKDIR /app
 
+# Manifests only first — cached until lockfile/package.json changes
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
 
-# ── Stage 2: Development ───────────────────────────────────────────
-FROM base AS development
+# ── Stage 2: Install dependencies (cached layer) ───────────────────
+FROM base AS deps
 
 RUN --mount=type=cache,id=pnpm-store-web,target=/pnpm/store \
     pnpm --filter web... install --frozen-lockfile --prefer-offline
+
+# ── Stage 3: Development ───────────────────────────────────────────
+FROM deps AS development
 
 COPY apps/web ./apps/web
 COPY packages/shared ./packages/shared
@@ -41,13 +45,12 @@ WORKDIR /app/apps/web
 
 EXPOSE 3000
 
-CMD ["pnpm", "dev"]
+# next dev resolves @pentimes/shared via tsconfig paths → TS source.
+# No separate shared build step needed in development.
+CMD ["pnpm", "exec", "next", "dev", "--port", "3000"]
 
-# ── Stage 3: Builder ───────────────────────────────────────────────
-FROM base AS builder
-
-RUN --mount=type=cache,id=pnpm-store-web,target=/pnpm/store \
-    pnpm --filter web... install --frozen-lockfile --prefer-offline
+# ── Stage 4: Builder ───────────────────────────────────────────────
+FROM deps AS builder
 
 COPY apps/web ./apps/web
 COPY packages/shared ./packages/shared
@@ -58,7 +61,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm --filter web build
 
-# ── Stage 4: Production ────────────────────────────────────────────
+# ── Stage 5: Production ────────────────────────────────────────────
 FROM node:20.15.1-alpine3.20 AS production
 
 RUN apk add --no-cache libc6-compat

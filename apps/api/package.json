@@ -1,10 +1,10 @@
 {
-  "name": "@pentimes/api",
-  "version": "0.0.1",
-  "description": "Pen Times Magazine — Express + GraphQL Yoga API",
+  "name":         "@pentimes/api",
+  "version":      "0.0.1",
+  "description":  "Pen Times Magazine — Express + GraphQL Yoga API",
   "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
+  "type":         "module",
+  "main":          "./dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:full": "cd ../.. && pnpm --filter shared build && cd apps/api && tsx watch src/index.ts",

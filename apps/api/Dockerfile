@@ -1,21 +1,20 @@
 # ──────────────────────────────────────────────────────────────────
 # Pen Times Magazine — API Dockerfile
-# Multi-stage: base → development → builder → production
-# Build context: monorepo root
+# Multi-stage: base → deps → development → builder → production
 #
-# WHY multi-stage:
-#   - development stage has hot-reload and dev deps
-#   - production stage has ONLY compiled output + prod deps
-#   - Results in a ~200MB prod image vs ~800MB single-stage
+# Key optimizations vs original:
+#   - "deps" stage installs packages ONCE and is reused by dev/prod
+#   - Source copied AFTER install so package-lock changes don't
+#     invalidate the source copy layer (and vice versa)
+#   - tsx watch launched directly (no shared pre-build step here;
+#     shared is volume-mounted in dev and pre-built in prod)
 # ──────────────────────────────────────────────────────────────────
 
-# ── Stage 1: Base 
-# Node 20 LTS on Alpine for a minimal base layer.
+# ── Stage 1: Base ──────────────────────────────────────────────────
 FROM node:20.15.1-alpine3.20 AS base
 
 RUN apk add --no-cache libc6-compat openssl
 
-# Pin pnpm — never use corepack prepare pnpm@latest
 RUN npm install -g pnpm@9.15.9
 
 RUN pnpm config set registry https://registry.npmjs.org/ && \
@@ -27,17 +26,24 @@ RUN pnpm config set registry https://registry.npmjs.org/ && \
 
 WORKDIR /app
 
-# Copy manifests only (maximises Docker layer cache)
+# Copy ONLY manifests first — this layer is cached until any
+# package.json or lockfile changes (not on every source edit)
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/shared/package.json ./packages/shared/
 
-# ── Stage 2: Development
-FROM base AS development
+# ── Stage 2: Install dependencies (cached layer) ───────────────────
+FROM base AS deps
 
+# Install all deps (including dev) once. This layer is reused by
+# the development stage — no reinstall on every `docker compose up`.
 RUN --mount=type=cache,id=pnpm-store-api,target=/pnpm/store \
     pnpm --filter api... install --frozen-lockfile --prefer-offline
 
+# ── Stage 3: Development ───────────────────────────────────────────
+FROM deps AS development
+
+# Copy source AFTER install so source edits don't bust the deps layer
 COPY apps/api ./apps/api
 COPY packages/shared ./packages/shared
 
@@ -45,30 +51,28 @@ WORKDIR /app/apps/api
 
 EXPOSE 4000
 
-CMD ["pnpm", "dev"]
+# tsx watch handles TypeScript compilation in-process.
+# The shared package source is volume-mounted in docker-compose.yml
+# so tsx path aliases resolve it directly — no pre-build needed.
+CMD ["pnpm", "exec", "tsx", "watch", "src/index.ts"]
 
-# ── Stage 3: Builder
-FROM base AS builder
-
-RUN --mount=type=cache,id=pnpm-store-api,target=/pnpm/store \
-    pnpm --filter api... install --frozen-lockfile --prefer-offline
+# ── Stage 4: Builder ───────────────────────────────────────────────
+FROM deps AS builder
 
 COPY apps/api ./apps/api
 COPY packages/shared ./packages/shared
 
-# Build shared first — api depends on its compiled output
 RUN pnpm --filter shared build
 RUN pnpm --filter api build
 
 # Prune to production deps only
 RUN pnpm --filter api --prod deploy /app/prod-deploy
 
-# ── Stage 4: Production 
+# ── Stage 5: Production ────────────────────────────────────────────
 FROM node:20.15.1-alpine3.20 AS production
 
 RUN apk add --no-cache libc6-compat openssl wget
 
-# Non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 api_user
 

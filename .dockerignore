@@ -1,28 +1,58 @@
+# Version control
 .git
-.agents
-.codex
+.gitignore
 
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
+*.swo
+
+# Dependencies (each service installs its own inside the image)
 node_modules
 **/node_modules
 
-.next
-**/.next
+# Build outputs — never needed in build context
 dist
 **/dist
 build
 **/build
+.next
+**/.next
+out
+**/out
+
+# Coverage & test reports
 coverage
 **/coverage
+playwright-report
+**/playwright-report
+test-results
 
+# Environment secrets
 .env
 .env.*
 !.env.example
 
+# Logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-.DS_Store
-Thumbs.db
+# TypeScript incremental build cache
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Drizzle local studio
+drizzle/
+
+# Docker files themselves (not needed in context)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Dev tools
+.husky
+.eslintcache
