@@ -15,11 +15,11 @@
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import { isDev } from '../config/env.js';
 import { logger } from '../helpers/logger.js';
-import { ApiError, type ErrorCode } from '../middleware/errorHandler.middleware.js';
+import { ApiError } from '../middleware/errorHandler.middleware.js';
 
 // The shape of what we add to error.extensions in every formatted error.
 export interface GraphQLErrorExtensions {
-  code: ErrorCode | 'GRAPHQL_VALIDATION_FAILED' | 'GRAPHQL_PARSE_FAILED' | 'UNKNOWN';
+  code: string | 'GRAPHQL_VALIDATION_FAILED' | 'GRAPHQL_PARSE_FAILED' | 'UNKNOWN';
   field?: string;
   details?: Record<string, string[]>;
   timestamp: string;

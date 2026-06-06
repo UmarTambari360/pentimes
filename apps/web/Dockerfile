@@ -30,6 +30,8 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
 
+COPY tsconfig*.json ./
+
 # ── Stage 2: Install dependencies (cached layer) ───────────────────
 FROM base AS deps
 

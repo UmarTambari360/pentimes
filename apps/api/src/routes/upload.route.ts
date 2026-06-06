@@ -3,7 +3,7 @@ import { authenticate, requireRole } from '../middleware/auth.middleware.js';
 import { cloudinaryService }        from '../services/cloudinary.service.js';
 import { ApiError }                from '../middleware/errorHandler.middleware.js';
 
-export const uploadRouter = Router();
+export const uploadRouter: Router = Router();
 
 uploadRouter.use(authenticate);
 

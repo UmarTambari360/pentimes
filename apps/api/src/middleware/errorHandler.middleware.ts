@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from 'express';
 import { isDev }                    from '../config/env.js';
 
 export class ApiError extends Error {
+  details: any;
   constructor(
     public override readonly message: string,
     public readonly statusCode: number = 500,
