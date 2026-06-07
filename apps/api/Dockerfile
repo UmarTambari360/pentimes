@@ -88,7 +88,7 @@ ENV NODE_ENV=production
 
 COPY --from=builder --chown=api_user:nodejs /app/prod-deploy ./
 COPY --from=builder --chown=api_user:nodejs /app/apps/api/dist ./dist
-COPY --from=builder --chown=api_user:nodejs /app/apps/api/src/db/migrations ./src/db/migrations
+COPY --from=builder --chown=api_user:nodejs /app/apps/api/src/db ./src/db
 
 USER api_user
 

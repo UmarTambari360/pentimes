@@ -26,6 +26,11 @@ export const metadata: Metadata = {
   },
 };
 
+// Force dynamic rendering for the homepage to always show the latest content.
+// We use caching at the GraphQL client level to optimize performance while ensuring fresh data.
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 interface ArticlesResult {
   articles: { items: ArticleCardType[]; total: number; hasMore: boolean };
 }
