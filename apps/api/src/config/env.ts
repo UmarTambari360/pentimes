@@ -33,9 +33,15 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRY:  z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
-  CLOUDINARY_CLOUD_NAME: z.string().min(1, 'CLOUDINARY_CLOUD_NAME is required'),
-  CLOUDINARY_API_KEY:    z.string().min(1, 'CLOUDINARY_API_KEY is required'),
-  CLOUDINARY_API_SECRET: z.string().min(1, 'CLOUDINARY_API_SECRET is required'),
+  CLOUDINARY_CLOUD_NAME: z
+    .string()
+    .min(1, 'CLOUDINARY_CLOUD_NAME is required'),
+  CLOUDINARY_API_KEY:    z
+    .string()
+    .min(1, 'CLOUDINARY_API_KEY is required'),
+  CLOUDINARY_API_SECRET: z
+    .string()
+    .min(1, 'CLOUDINARY_API_SECRET is required'),
 
   CORS_ORIGIN:    z.string().default('http://localhost:3000'),
   COOKIE_DOMAIN:  z.string().default('localhost'),

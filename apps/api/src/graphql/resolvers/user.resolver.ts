@@ -1,4 +1,3 @@
-// apps/api/src/graphql/resolvers/user.resolver.ts
 import { builder }      from '../builder.js';
 import { authService }  from '../../services/auth.service.js';
 import {
@@ -15,9 +14,9 @@ import {
 }                       from '../inputs.js';
 import '../typedefs/user.typedef.js';
 import { UserType, AuthPayloadType } from '../typedefs/user.typedef.js';
-import { GraphQLError }              from 'graphql';
-import { ApiError }                  from '../../middleware/errorHandler.middleware.js';
-import { logger }                    from '../../helpers/logger.js';
+import { GraphQLError }           from 'graphql';
+import { ApiError }              from '../../middleware/errorHandler.middleware.js';
+import { logger }               from '../../helpers/logger.js';
 
 builder.queryField('me', (t) =>
   t.field({

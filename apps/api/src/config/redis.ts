@@ -1,4 +1,4 @@
-import { Redis }    from 'ioredis';
+import { Redis }      from 'ioredis';
 import { env, isDev } from './env.js';
 
 function createRedisClient(): Redis {
@@ -14,20 +14,21 @@ function createRedisClient(): Redis {
     maxRetriesPerRequest: 3,
     enableReadyCheck:     true,
     lazyConnect:          false,
-    // Named instance for easier debugging
     connectionName: 'pentimes_api',
   });
 
-  client.on('connect',     () => logRedis('info',  'redis_connected',     {}));
-  client.on('ready',       () => logRedis('info',  'redis_ready',         {}));
-  client.on('error',  (err) => logRedis('error', 'redis_error',          { message: err.message }));
-  client.on('reconnecting', () => logRedis('warn',  'redis_reconnecting',  {}));
-  client.on('close',        () => logRedis('warn',  'redis_connection_closed', {}));
+  client.on('connect', () => logRedis('info',  'redis_connected', {}));
+  client.on('ready',   () => logRedis('info',  'redis_ready',     {}));
+  client.on('error', (err) => logRedis('error', 'redis_error', { message: err.message }));
+  client.on('reconnecting', () => logRedis('warn',  'redis_reconnecting', {}));
+  client.on('close',   () => logRedis('warn',  'redis_connection_closed', {}));
 
   return client;
 }
 
-function logRedis(level: 'info' | 'warn' | 'error', event: string, data: Record<string, unknown>): void {
+function logRedis(
+  level: 'info' | 'warn' | 'error', event: string, 
+  data: Record<string, unknown>): void {
   if (isDev) {
     console[level](`[Redis] ${event}`, data);
   } else {

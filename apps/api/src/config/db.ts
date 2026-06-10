@@ -5,6 +5,8 @@ import * as schema     from '../db/schema/index.js';
 
 const { Pool } = pg;
 
+const isLocalDocker = env.DATABASE_URL.includes("@postgres:5432");
+
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
   // Production: more connections for concurrency
@@ -14,7 +16,7 @@ const pool = new Pool({
   idleTimeoutMillis:       30_000,
   connectionTimeoutMillis: 10_000,
   // Required for Heroku/Render/Railway SSL — safe to set on self-hosted too
-  ssl: isProd ? { rejectUnauthorized: false } : false,
+  ssl: isLocalDocker ? false : { rejectUnauthorized: false },
 });
 
 pool.on('error', (err) => {

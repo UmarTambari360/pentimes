@@ -10,7 +10,7 @@ export const builder = new SchemaBuilder<{
   AuthScopes: {
     authenticated: boolean;
     role: UserRole;
-    // Optional but very useful — can be used like: .authScope('isAdmin')
+    // can be used like: .authScope('isAdmin')
     isAdmin: boolean;
     isAuthor: boolean;
   };

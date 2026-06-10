@@ -41,12 +41,12 @@ if (!process.env['DATABASE_URL']) {
 }
 
 export default defineConfig({
-  schema: './src/db/schema/index.ts',        // ← Better: use barrel file
-  out: './src/db/migrations',
-  dialect: 'postgresql',
+  schema:   './src/db/schema/index.ts',        // ← Better: use barrel file
+  out:      './src/db/migrations',
+  dialect:  'postgresql',
   dbCredentials: {
     url: process.env['DATABASE_URL'],
   },
   verbose: true,
-  strict: true,
+  strict:  true,
 });

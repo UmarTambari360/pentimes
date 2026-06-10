@@ -2,7 +2,7 @@ import { builder } from '../builder.js';
 import type {
   CommentWithAuthor,
   CommentWithContext,
-} from '../../types/comment.type.ts';
+}                  from '../../types/comment.type.ts';
 
 // ── Comment Author (embedded)
 export const CommentAuthorType = builder

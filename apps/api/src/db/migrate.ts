@@ -14,25 +14,6 @@ dotenv.config({ path: path.resolve(process.cwd(), '../../.env.production') });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-/**
- * Standalone migration runner.
- *
- * WHY a separate file instead of running migrations inline in index.ts?
- *
- * Running migrations on every server start is dangerous in production:
- * if two instances start simultaneously (rolling deploy), they race
- * each other and can corrupt the migration history table.
- *
- * Instead, migrations run as a one-off step BEFORE the new server
- * instances come up. In our Dockerfile CMD, we run:
- *   node dist/db/migrate.js && node dist/index.js
- *
- * This guarantees exactly-once execution per deployment.
- *
- * Drizzle tracks applied migrations in __drizzle_migrations and is
- * idempotent — re-running this file against an up-to-date database
- * is safe and fast.
- */
 async function runMigrations(): Promise<void> {
   if (!process.env['DATABASE_URL']) {
     console.error(JSON.stringify({

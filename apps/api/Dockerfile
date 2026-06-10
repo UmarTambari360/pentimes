@@ -11,7 +11,7 @@
 #   - Migrations run automatically on container startup in production
 # ──────────────────────────────────────────────────────────────────
 
-# ── Stage 1: Base ──────────────────────────────────────────────────
+# ── Stage 1: Base
 FROM node:20.15.1-alpine3.20 AS base
 
 RUN apk add --no-cache libc6-compat openssl
@@ -36,7 +36,7 @@ COPY packages/shared/package.json ./packages/shared/
 
 COPY tsconfig*.json ./
 
-# ── Stage 2: Install dependencies (cached layer) ───────────────────
+# ── Stage 2: Install dependencies (cached layer)
 FROM base AS deps
 
 # Install all deps (including dev) once. This layer is reused by
@@ -44,7 +44,7 @@ FROM base AS deps
 RUN --mount=type=cache,id=pnpm-store-api,target=/pnpm/store \
     pnpm install --frozen-lockfile --prefer-offline
 
-# ── Stage 3: Development ───────────────────────────────────────────
+# ── Stage 3: Development
 FROM deps AS development
 
 # Copy source AFTER install so source edits don't bust the deps layer
@@ -60,7 +60,7 @@ EXPOSE 4000
 # so tsx path aliases resolve it directly — no pre-build needed.
 CMD ["pnpm", "exec", "tsx", "watch", "src/index.ts"]
 
-# ── Stage 4: Builder ───────────────────────────────────────────────
+# ── Stage 4: Builder
 FROM deps AS builder
 
 COPY apps/api ./apps/api
@@ -73,7 +73,7 @@ RUN pnpm --filter api build
 # Prune to production deps only
 RUN pnpm --filter api --prod deploy /app/prod-deploy
 
-# ── Stage 5: Production ────────────────────────────────────────────
+# ── Stage 5: Production
 FROM node:20.15.1-alpine3.20 AS production
 
 RUN apk add --no-cache libc6-compat openssl wget

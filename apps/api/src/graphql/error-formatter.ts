@@ -1,5 +1,3 @@
-// apps/api/src/graphql/error-formatter.ts
-//
 // WHY a custom GraphQL error formatter:
 //   GraphQL Yoga's default formatter exposes full stack traces and internal
 //   Pothos error metadata in production responses.  We intercept every error
@@ -33,7 +31,7 @@ export interface FormattedGraphQLError extends GraphQLFormattedError {
   extensions: GraphQLErrorExtensions;
 }
 
-// ─── Map well-known GraphQL error codes ────────────────────────────────────
+// ─── Map well-known GraphQL error codes 
 function getExtensionCode(err: GraphQLError): GraphQLErrorExtensions['code'] {
   // Pothos scope-auth surfaces its errors via extensions.code already.
   const existing = err.extensions?.['code'];
@@ -46,7 +44,7 @@ function getExtensionCode(err: GraphQLError): GraphQLErrorExtensions['code'] {
   return 'UNKNOWN';
 }
 
-// ─── Main formatter ────────────────────────────────────────────────────────
+// ─── Main formatter
 export function formatError(
   formattedError: GraphQLFormattedError,
   error: unknown,
@@ -92,7 +90,7 @@ export function formatError(
     };
   }
 
-  // ── Generic GraphQLError (auth, validation, parse) ───────────────────────
+  // ── Generic GraphQLError (auth, validation, parse)
   if (error instanceof GraphQLError) {
     const code = getExtensionCode(error);
 
@@ -114,7 +112,7 @@ export function formatError(
     };
   }
 
-  // ── Completely unexpected / unhandled error ──────────────────────────────
+  // ── Completely unexpected / unhandled error
   const unknownMessage = originalError instanceof Error
     ? originalError.message
     : 'An unexpected error occurred.';
