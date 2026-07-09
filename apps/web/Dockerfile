@@ -35,8 +35,7 @@ COPY tsconfig*.json ./
 # ── Stage 2: Install dependencies (cached layer) ───────────────────
 FROM base AS deps
 
-RUN --mount=type=cache,id=pnpm-store-web,target=/pnpm/store \
-    pnpm --filter web... install --frozen-lockfile --prefer-offline
+RUN pnpm install --frozen-lockfile
 
 # ── Stage 3: Development ───────────────────────────────────────────
 FROM deps AS development
