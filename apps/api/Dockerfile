@@ -41,8 +41,7 @@ FROM base AS deps
 
 # Install all deps (including dev) once. This layer is reused by
 # the development stage — no reinstall on every `docker compose up`.
-RUN --mount=type=cache,id=pnpm-store-api,target=/pnpm/store \
-    pnpm install --frozen-lockfile --prefer-offline
+RUN pnpm install --frozen-lockfile
 
 # ── Stage 3: Development
 FROM deps AS development
