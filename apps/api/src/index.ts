@@ -18,6 +18,10 @@ import { requestLogger }       from './middleware/requestLogger.middleware.js';
 
 const app = express();
 
+if (env.TRUST_PROXY > 0) {
+  app.set('trust proxy', env.TRUST_PROXY);
+}
+
 // ── Security headers ─────────────────────────────────────────────
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -55,8 +59,8 @@ app.use(cookieParser());
 app.use(requestLogger);
 
 // ── Rate limiting ─────────────────────────────────────────────────
-app.use('/graphql', createRateLimiter({ max: 100, windowMs: 15 * 60 * 1000 }));
-app.use('/upload',  createRateLimiter({ max: 20,  windowMs: 15 * 60 * 1000 }));
+app.use('/graphql', createRateLimiter({ name: 'graphql', max: env.RATE_LIMIT_GRAPHQL_MAX, windowMs: 15 * 60 * 1000 }));
+app.use('/upload',  createRateLimiter({ name: 'upload',  max: 20, windowMs: 15 * 60 * 1000 }));
 
 // ── Health check ─────────────────────────────────────────────────
 app.get('/health', async (_req, res) => {

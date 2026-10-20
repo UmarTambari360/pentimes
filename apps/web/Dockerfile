@@ -65,6 +65,20 @@ RUN pnpm --filter shared build
 # Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# NEXT_PUBLIC_* values are inlined into the JS bundle at build time, so they
+# must exist as ENV during `next build`. They are supplied via docker-compose
+# `build.args` (or `--build-arg`). Runtime env vars cannot change them later.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=$NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
+# Fail the build early instead of silently baking in localhost fallbacks
+RUN test -n "$NEXT_PUBLIC_API_URL" || (echo "ERROR: NEXT_PUBLIC_API_URL build arg is empty" >&2 && exit 1)
+RUN test -n "$NEXT_PUBLIC_SITE_URL" || (echo "ERROR: NEXT_PUBLIC_SITE_URL build arg is empty" >&2 && exit 1)
+
 # Build Next.js app (creates .next directory with standalone output)
 RUN pnpm --filter web build
 

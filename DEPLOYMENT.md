@@ -73,65 +73,52 @@ docker compose -f docker-compose.prod.yml up --build -d --no-deps web
 
 ---
 
-## 5. Nginx SSL (Recommended)
+## 5. Nginx and SSL
 
-Create `nginx/nginx.conf`:
+Nginx is the public entry point (ports 80/443). It serves everything on one
+origin, `https://pentimes.ng`:
 
-```nginx
-events {}
+| Path                          | Goes to    |
+|-------------------------------|------------|
+| `/graphql`, `/upload`, `/health` | `api:4000` |
+| everything else               | `web:3000` |
 
-http {
-  upstream api  { server api:4000;  }
-  upstream web  { server web:3000;  }
+`www.pentimes.ng` redirects to `pentimes.ng`. The config lives in
+`nginx/nginx.conf`, and the `nginx` service is enabled in
+`docker-compose.prod.yml`. The web and API containers only publish ports on the
+server's loopback (`127.0.0.1`), so they are not reachable from the internet.
 
-  server {
-    listen 80;
-    server_name pentimes.ng www.pentimes.ng;
-    return 301 https://$host$request_uri;
-  }
+### Get an SSL certificate (before the first `up`)
 
-  server {
-    listen 443 ssl http2;
-    server_name pentimes.ng www.pentimes.ng;
+Nginx will not start without certificates. Point your DNS A records for
+`pentimes.ng` and `www.pentimes.ng` at the server, then run this on the host
+(port 80 must be free, so do it before starting the stack):
 
-    ssl_certificate     /etc/nginx/ssl/fullchain.pem;
-    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
-
-    # Frontend
-    location / {
-      proxy_pass http://web;
-      proxy_set_header Host              $host;
-      proxy_set_header X-Real-IP         $remote_addr;
-      proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # API
-    location /graphql {
-      proxy_pass http://api;
-      proxy_set_header Host              $host;
-      proxy_set_header X-Real-IP         $remote_addr;
-      proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /upload {
-      proxy_pass http://api;
-      proxy_set_header Host              $host;
-      proxy_set_header X-Forwarded-Proto $scheme;
-      client_max_body_size 15m;
-    }
-
-    location /health {
-      proxy_pass http://api;
-    }
-  }
-}
+```bash
+sudo apt install -y certbot
+sudo certbot certonly --standalone -d pentimes.ng -d www.pentimes.ng
 ```
 
-Then uncomment the Nginx service in `docker-compose.prod.yml`.
+Certificates land in `/etc/letsencrypt/live/pentimes.ng/`, which the Nginx
+container mounts read-only. After a renewal, reload Nginx:
+
+```bash
+docker exec pentimes_nginx_prod nginx -s reload
+```
+
+### Proxy hops and rate limiting
+
+With Nginx as the only proxy, keep `TRUST_PROXY=1`. If you also put Cloudflare
+in front of Nginx, set `TRUST_PROXY=2`, otherwise the API sees Cloudflare's IPs.
+
+### Verify
+
+```bash
+curl http://localhost:4000/health          # from the server itself
+curl https://pentimes.ng/health            # through Nginx
+```
 
 ---
-
 ## 6. Database Backups
 
 ```bash

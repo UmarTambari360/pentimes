@@ -42,7 +42,13 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z
     .string()
     .min(1, 'CLOUDINARY_API_SECRET is required'),
+  // Number of reverse proxies in front of the API (Nginx = 1, Cloudflare + Nginx = 2).
+  // 0 = API is directly exposed. Setting this too high lets clients spoof their IP.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
 
+  // Max /graphql requests per IP per 15 minutes. Kept generous because many
+  // mobile users share one IP behind carrier-grade NAT.
+  RATE_LIMIT_GRAPHQL_MAX: z.coerce.number().int().positive().default(300),
   CORS_ORIGIN:    z.string().default('http://localhost:3000'),
   COOKIE_DOMAIN:  z.string().default('localhost'),
   COOKIE_SECURE:  z
