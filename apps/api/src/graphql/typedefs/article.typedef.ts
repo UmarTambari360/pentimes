@@ -1,7 +1,7 @@
 import { builder }                  from '../builder.js';
 import './user.typedef.js';
 import './category.typedef.js';
-import type { ArticleFull }         from '../../types/article.type.ts';
+import type { ArticleFull }         from '../../types/article.type.js';
 import { AuthorSummaryType }        from './user.typedef.js';
 import { CategorySummaryType }      from './category.typedef.js';
 

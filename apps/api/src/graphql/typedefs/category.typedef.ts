@@ -1,5 +1,5 @@
 import { builder } from '../builder.js';
-import type { Category } from '../../types/category.type.ts';
+import type { Category } from '../../types/category.type.js';
 
 // Category Type (Full)
 export const CategoryType = builder

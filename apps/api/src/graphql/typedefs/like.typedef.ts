@@ -1,5 +1,5 @@
 import { builder } from '../builder.js';
-import type { ToggleLikeResult } from '../../types/like.type.ts';
+import type { ToggleLikeResult } from '../../types/like.type.js';
 
 export const ToggleLikeResultType = builder
   .objectRef<ToggleLikeResult>('ToggleLikeResult')

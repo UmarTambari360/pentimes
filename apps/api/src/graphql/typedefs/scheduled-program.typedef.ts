@@ -1,5 +1,5 @@
 import { builder } from '../builder.js';
-import type { ScheduledProgram } from '../../types/scheduled-program.type.ts';
+import type { ScheduledProgram } from '../../types/scheduled-program.type.js';
 
 export const ScheduledProgramType = builder.objectRef<ScheduledProgram>('ScheduledProgram').implement({
   fields: (t) => ({

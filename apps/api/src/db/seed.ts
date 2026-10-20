@@ -1,6 +1,4 @@
 /**
- * apps/api/src/db/seed.ts
- *
  * Seed file for Pen Times Magazine.
  * Creates:
  *  - 1 admin user
