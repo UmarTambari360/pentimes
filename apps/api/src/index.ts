@@ -12,7 +12,7 @@ import { checkRedisHealth }    from './config/redis.js';
 import { schema }              from './graphql/schema.js';
 import { createContext }       from './graphql/context.js';
 import { errorHandler }        from './middleware/errorHandler.middleware.js';
-import { createRateLimiter }   from './middleware/rateLimiter.middleware.js';
+import { createRateLimiter, isInternalRequest }   from './middleware/rateLimiter.middleware.js';
 import { uploadRouter }        from './routes/upload.route.js';
 import { requestLogger }       from './middleware/requestLogger.middleware.js';
 
@@ -50,6 +50,7 @@ app.use(
   })
 );
 
+app.use('/upload', express.json({ limit: '14mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
@@ -59,7 +60,7 @@ app.use(cookieParser());
 app.use(requestLogger);
 
 // ── Rate limiting ─────────────────────────────────────────────────
-app.use('/graphql', createRateLimiter({ name: 'graphql', max: env.RATE_LIMIT_GRAPHQL_MAX, windowMs: 15 * 60 * 1000 }));
+app.use('/graphql', createRateLimiter({ name: 'graphql', max: env.RATE_LIMIT_GRAPHQL_MAX, windowMs: 15 * 60 * 1000, skip: isInternalRequest }));
 app.use('/upload',  createRateLimiter({ name: 'upload',  max: 20, windowMs: 15 * 60 * 1000 }));
 
 // ── Health check ─────────────────────────────────────────────────

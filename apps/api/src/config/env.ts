@@ -49,6 +49,13 @@ const envSchema = z.object({
   // Max /graphql requests per IP per 15 minutes. Kept generous because many
   // mobile users share one IP behind carrier-grade NAT.
   RATE_LIMIT_GRAPHQL_MAX: z.coerce.number().int().positive().default(300),
+   // Shared secret the Next.js server sends (X-Internal-Key) on its server-side
+  // GraphQL calls so they skip the per-IP rate limiter. Unset = no bypass.
+  // Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  INTERNAL_API_KEY: z
+    .string()
+    .min(32, 'INTERNAL_API_KEY must be at least 32 characters')
+    .optional(),
   CORS_ORIGIN:    z.string().default('http://localhost:3000'),
   COOKIE_DOMAIN:  z.string().default('localhost'),
   COOKIE_SECURE:  z

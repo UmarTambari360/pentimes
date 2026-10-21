@@ -1,3 +1,4 @@
+import { randomUUID }       from 'node:crypto';
 import { v2 as cloudinary } from 'cloudinary';
 import type { 
   UploadApiResponse, 
@@ -12,13 +13,39 @@ cloudinary.config({
   secure: true,
 });
 
+// Only assets inside the app's own Cloudinary folders may ever be deleted.
+// This stops the API (and any compromised account) from touching other files
+// in the Cloudinary account, such as logos or assets used by other projects.
+const MANAGED_FOLDERS: readonly string[] = [
+  CLOUDINARY.ARTICLE_COVERS_FOLDER,
+  CLOUDINARY.AVATARS_FOLDER,
+];
+
+const avatarName = (userId: string): string => `avatar_${userId}`;
+
+/** Full Cloudinary public ID of a user's avatar, e.g. pentimes/avatars/avatar_<id> */
+export function avatarPublicId(userId: string): string {
+  return `${CLOUDINARY.AVATARS_FOLDER}/${avatarName(userId)}`;
+}
+
+/** True only for well-formed public IDs inside the app's managed folders. */
+export function isManagedPublicId(publicId: string): boolean {
+  if (publicId.length === 0 || publicId.length > 255) return false;
+  if (/[\u0000-\u001f]/.test(publicId)) return false;
+
+  const segments = publicId.split('/');
+  if (segments.some((s) => s === '' || s === '.' || s === '..')) return false;
+
+  return MANAGED_FOLDERS.some((folder) => publicId.startsWith(`${folder}/`));
+}
+
 export const cloudinaryService = {
-  async uploadArticleCover(
-    base64Image: string,
-    fileName?: string
-  ): Promise<UploadApiResponse> {
+  async uploadArticleCover(base64Image: string): Promise<UploadApiResponse> {
     const options: UploadApiOptions = {
       folder: CLOUDINARY.ARTICLE_COVERS_FOLDER,
+      // Server-generated ID: never use a client-supplied file name, which could
+      // collide with another asset or smuggle path characters into the ID.
+      public_id: randomUUID(),
       overwrite: false,
       transformation: [
         { width: 1200, crop: 'limit' },
@@ -26,11 +53,6 @@ export const cloudinaryService = {
       ],
       resource_type: 'image',
     };
-
-    // Only set public_id if provided (Cloudinary auto-generates if omitted)
-    if (fileName) {
-      options.public_id = fileName;
-    }
 
     return cloudinary.uploader.upload(base64Image, options);
   },
@@ -41,7 +63,7 @@ export const cloudinaryService = {
   ): Promise<UploadApiResponse> {
     return cloudinary.uploader.upload(base64Image, {
       folder: CLOUDINARY.AVATARS_FOLDER,
-      public_id: `avatar_${userId}`,
+      public_id: avatarName(userId),
       overwrite: true,
       transformation: [
         { width: 400, height: 400, crop: 'fill', gravity: 'face' },

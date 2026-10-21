@@ -119,9 +119,12 @@ services:
       dockerfile: apps/web/Dockerfile
       target: production
       args:
+        
         # Inlined into the browser bundle at build time, so this must be the
         # PUBLIC URL browsers use (https://pentimes.ng via nginx), never http://api:4000
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
+        # Server-side rendering talks to the API over the Docker network, not the internet
+        INTERNAL_API_URL: http://api:4000
         NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:-${CLOUDINARY_CLOUD_NAME}}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL must be set}
     container_name: pentimes_web_prod
