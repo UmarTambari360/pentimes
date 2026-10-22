@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
 import {
   Table,
@@ -23,8 +22,7 @@ import { AuthorAvatar } from "@/components/ui/author-avatar";
 import { UPDATE_USER_ROLE } from "@/lib/graphql/queries/users";
 import { formatDate } from "@/lib/utils";
 import type { UserType } from "@/types";
-
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+import { getAuthClient } from "@/lib/graphql/browser-client";
 
 const roleVariants: Record<string, "default" | "amber" | "success"> = {
   reader: "default",
@@ -38,16 +36,6 @@ interface UsersTableProps {
 
 export function UsersTable({ users: initialUsers }: UsersTableProps) {
   const [users, setUsers] = useState(initialUsers);
-
-  const getAuthClient = () => {
-    const token = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("access_token="))
-      ?.split("=")[1];
-    return new GraphQLClient(`${API_URL}/graphql`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  };
 
   const handleRoleChange = async (userId: string, role: string) => {
     try {

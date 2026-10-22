@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
 import { Trash2, ExternalLink, MessageSquare } from "lucide-react";
 import {
@@ -26,8 +25,7 @@ import { AuthorAvatar } from "@/components/ui/author-avatar";
 import { Pagination } from "@/components/public/pagination";
 import { DELETE_COMMENT } from "@/lib/graphql/queries/comments";
 import { formatRelativeDate } from "@/lib/utils";
-
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+import { getAuthClient } from "@/lib/graphql/browser-client";
 
 interface AdminComment {
   id: string;
@@ -59,16 +57,6 @@ export function AdminCommentsTable({
   const [comments, setComments] = useState(initialComments);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const getAuthClient = () => {
-    const token = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("access_token="))
-      ?.split("=")[1];
-    return new GraphQLClient(`${API_URL}/graphql`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  };
 
   const handleDelete = async () => {
     if (!deleteId) return;

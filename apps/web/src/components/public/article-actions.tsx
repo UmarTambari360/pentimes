@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import { Heart, Bookmark, Share2 } from "lucide-react";
-import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
 import { TOGGLE_LIKE, TOGGLE_BOOKMARK } from "@/lib/graphql/queries/articles";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+import { getAuthClient, hasSession } from "@/lib/graphql/browser-client";
 
 interface ArticleActionsProps {
   articleId: string;
@@ -33,20 +31,8 @@ export function ArticleActions({
   const [likeLoading, setLikeLoading] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
 
-  const getAuthClient = () => {
-    const token = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("access_token="))
-      ?.split("=")[1];
-
-    return new GraphQLClient(`${API_URL}/graphql`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  };
-
   const handleLike = async () => {
-    const token = document.cookie.includes("access_token=");
-    if (!token) {
+    if (!hasSession()) {
       toast.error("Please sign in to like articles");
       return;
     }
@@ -68,8 +54,7 @@ export function ArticleActions({
   };
 
   const handleBookmark = async () => {
-    const token = document.cookie.includes("access_token=");
-    if (!token) {
+    if (!hasSession()) {
       toast.error("Please sign in to bookmark articles");
       return;
     }

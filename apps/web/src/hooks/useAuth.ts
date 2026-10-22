@@ -15,6 +15,7 @@ import {
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 const client  = new GraphQLClient(`${API_URL}/graphql`, { credentials: 'include' });
 
+// Tokens are never exposed to JavaScript: the API sets them as HttpOnly cookies.
 interface AuthPayload {
   user: {
     id:    string;
@@ -22,7 +23,6 @@ interface AuthPayload {
     email: string;
     role:  string;
   };
-  accessToken: string;
 }
 
 interface LoginInput    { email: string; password: string }
@@ -36,7 +36,6 @@ export function useAuth() {
     setLoading(true);
     try {
       const data = await client.request<{ login: AuthPayload }>(LOGIN_MUTATION, { input });
-      document.cookie = `access_token=${data.login.accessToken}; path=/; max-age=${15 * 60}; SameSite=Lax`;
       toast.success(`Welcome back, ${data.login.user.name}!`);
 
       const { role } = data.login.user;
@@ -58,7 +57,6 @@ export function useAuth() {
     setLoading(true);
     try {
       const data = await client.request<{ register: AuthPayload }>(REGISTER_MUTATION, { input });
-      document.cookie = `access_token=${data.register.accessToken}; path=/; max-age=${15 * 60}; SameSite=Lax`;
       toast.success(`Welcome to Pen Times, ${data.register.user.name}!`);
       router.push('/dashboard');
       router.refresh();
@@ -78,11 +76,9 @@ export function useAuth() {
     } catch {
       // Ignore logout errors — always clear local state.
     } finally {
-      document.cookie = 'access_token=; path=/; max-age=0';
-      toast.success('Logged out successfully.');
+      setLoading(false);
       router.push('/');
       router.refresh();
-      setLoading(false);
     }
   }, [router]);
 

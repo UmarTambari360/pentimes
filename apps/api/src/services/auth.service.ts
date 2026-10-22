@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
@@ -33,10 +34,31 @@ function signAccessToken(payload: { sub: string; email: string; role: UserRole }
   });
 }
 
-function signRefreshToken(payload: { sub: string }): string {
+function signRefreshToken(payload: { sub: string; sid: string }): string {
   return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
     expiresIn: env.JWT_REFRESH_EXPIRY,
   });
+}
+
+const sha256Hex = (value: string): string =>
+  createHash('sha256').update(value).digest('hex');
+
+/**
+ * Creates a new login session: signs both tokens and stores a hash of the
+ * refresh token in Redis under its own session id (one entry per device).
+ */
+async function startSession(user: { id: string; email: string; role: UserRole }) {
+  const sessionId    = randomUUID();
+  const accessToken  = signAccessToken({ sub: user.id, email: user.email, role: user.role });
+  const refreshToken = signRefreshToken({ sub: user.id, sid: sessionId });
+
+  const { exp } = jwt.decode(refreshToken) as { exp: number };
+  const ttlSeconds = Math.max(exp - Math.floor(Date.now() / 1000), 1);
+
+  await cacheService.setRefreshSession(user.id, sessionId, sha256Hex(refreshToken), ttlSeconds);
+  await cacheService.setSession(user.id, { id: user.id, role: user.role, email: user.email });
+
+  return { accessToken, refreshToken };
 }
 
 /**
@@ -68,13 +90,9 @@ export const authService = {
     });
 
     const { password: _, ...publicUser } = user;
-    const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
-    const refreshToken = signRefreshToken({ sub: user.id });
+    const { accessToken, refreshToken } = await startSession(user);
 
-    await cacheService.setRefreshToken(user.id, refreshToken);
-    await cacheService.setSession(user.id, { id: user.id, role: user.role, email: user.email });
-
-    return { user: publicUser, accessToken };
+    return { user: publicUser, accessToken, refreshToken };
   },
 
   async login(email: string, password: string) {
@@ -85,42 +103,57 @@ export const authService = {
     if (!valid) throw new GraphQLError('Invalid email or password', { extensions: { code: 'UNAUTHORIZED' } });
 
     const { password: _, ...publicUser } = user;
-    const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
-    const refreshToken = signRefreshToken({ sub: user.id });
+    const { accessToken, refreshToken } = await startSession(user);
 
-    await cacheService.setRefreshToken(user.id, refreshToken);
-    await cacheService.setSession(user.id, { id: user.id, role: user.role, email: user.email });
-
-    return { user: publicUser, accessToken };
+    return { user: publicUser, accessToken, refreshToken };
   },
 
-  async logout(userId: string): Promise<void> {
-    await Promise.all([
-      cacheService.deleteRefreshToken(userId),
-      cacheService.deleteSession(userId),
-    ]);
-  },
+  /**
+   * Ends ONE session (the device being logged out). Best effort: an invalid or
+   * missing refresh token simply means there is nothing to revoke.
+   */
+  async logout(refreshToken: string | null | undefined): Promise<void> {
+    if (!refreshToken) return;
 
-  async refreshTokens(token: string) {
-    let payload: { sub: string };
     try {
-      payload = jwt.verify(token, env.JWT_REFRESH_SECRET) as { sub: string };
+      const payload = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as { sub: string; sid?: string };
+      if (payload.sid) {
+        await cacheService.deleteRefreshSession(payload.sub, payload.sid);
+      }
     } catch {
-      throw new GraphQLError('Invalid or expired refresh token', { extensions: { code: 'UNAUTHORIZED' } });
+      // Expired or tampered token: nothing to revoke.
+    }
+  },
+
+  /**
+   * Issues a new access token from a valid refresh token.
+   * The refresh token itself is NOT rotated: several tabs or a page navigation
+   * can refresh at the same moment, and rotation would make the losers of that
+   * race look like a stolen token and log the user out. The refresh token is
+   * HttpOnly, lasts JWT_REFRESH_EXPIRY, and is revoked on logout / password change.
+   */
+  async refreshTokens(token: string) {
+    let payload: { sub: string; sid?: string };
+    try {
+      payload = jwt.verify(token, env.JWT_REFRESH_SECRET) as { sub: string; sid?: string };
+    } catch {
+      throw new GraphQLError('Invalid or expired refresh token', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
-    const stored = await cacheService.getRefreshToken(payload.sub);
-    if (!stored || stored !== token) {
-      throw new GraphQLError('Refresh token revoked', { extensions: { code: 'UNAUTHORIZED' } });
+    if (!payload.sid) {
+      throw new GraphQLError('Invalid refresh token', { extensions: { code: 'UNAUTHENTICATED' } });
+    }
+
+    const storedHash = await cacheService.getRefreshSession(payload.sub, payload.sid);
+    if (!storedHash || storedHash !== sha256Hex(token)) {
+      throw new GraphQLError('Refresh token revoked', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
     const user = await findUserById(payload.sub);
-    if (!user) throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
+    if (!user) throw new GraphQLError('User not found', { extensions: { code: 'UNAUTHENTICATED' } });
 
+    // Role/email are re-read from the database, so role changes apply at refresh.
     const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
-    const newRefreshToken = signRefreshToken({ sub: user.id });
-
-    await cacheService.setRefreshToken(user.id, newRefreshToken);
 
     return { user, accessToken };
   },
@@ -148,6 +181,7 @@ export const authService = {
 
     const hashed = await argon2.hash(newPassword);
     await updateUser(userId, { password: hashed });
-    await cacheService.deleteRefreshToken(userId);
+    // Password changed: every device must sign in again.
+    await cacheService.deleteAllRefreshSessions(userId);
   },
 };

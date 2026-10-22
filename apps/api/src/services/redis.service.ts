@@ -22,8 +22,6 @@ export const CacheKeys = {
     `search:${query.toLowerCase().trim()}:${offset}:${limit}`,
 
   session: (userId: string) => `session:${userId}`,
-
-  refreshToken: (userId: string) => `refresh:${userId}`,
 } as const;
 
 export const cacheService = {
@@ -76,22 +74,36 @@ export const cacheService = {
     ]);
   },
 
-  async setRefreshToken(userId: string, token: string): Promise<void> {
-    await redis.setex(
-      CacheKeys.refreshToken(userId),
-      7 * 24 * 60 * 60,
-      token,
-    );
+    // ── Refresh sessions ─────────────────────────────────────────────
+  // One Redis key per login (session id), so signing in on a second device
+  // does not sign out the first. The value is a SHA-256 hash of the refresh
+  // token, so a Redis leak does not hand out usable tokens.
+  async setRefreshSession(
+    userId: string,
+    sessionId: string,
+    tokenHash: string,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await redis.setex(`refresh:${userId}:${sessionId}`, ttlSeconds, tokenHash);
   },
 
-  async getRefreshToken(userId: string): Promise<string | null> {
-    return redis.get(CacheKeys.refreshToken(userId));
+  async getRefreshSession(userId: string, sessionId: string): Promise<string | null> {
+    return redis.get(`refresh:${userId}:${sessionId}`);
   },
 
-  async deleteRefreshToken(userId: string): Promise<void> {
-    await redis.del(CacheKeys.refreshToken(userId));
+  async deleteRefreshSession(userId: string, sessionId: string): Promise<void> {
+    await redis.del(`refresh:${userId}:${sessionId}`);
   },
 
+  /** Sign the user out everywhere (e.g. after a password change). */
+  async deleteAllRefreshSessions(userId: string): Promise<void> {
+    let cursor = '0';
+    do {
+      const [next, keys] = await redis.scan(cursor, 'MATCH', `refresh:${userId}:*`, 'COUNT', 100);
+      cursor = next;
+      if (keys.length > 0) await redis.del(...keys);
+    } while (cursor !== '0');
+  },
   async setSession(
     userId: string,
     session: { id: string; role: string; email: string },

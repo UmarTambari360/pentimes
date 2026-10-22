@@ -25,7 +25,6 @@ export const LOGIN_MUTATION = gql`
         role
         bio
       }
-      accessToken
     }
   }
 `;
@@ -39,7 +38,6 @@ export const REGISTER_MUTATION = gql`
         email
         role
       }
-      accessToken
     }
   }
 `;

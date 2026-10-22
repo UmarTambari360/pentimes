@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
 import {
   Eye,
@@ -42,8 +41,7 @@ import {
 import { DELETE_ARTICLE, UPDATE_ARTICLE } from "@/lib/graphql/queries/articles";
 import { formatRelativeDate } from "@/lib/utils";
 import type { ArticleCardType } from "@/types";
-
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+import { getAuthClient } from "@/lib/graphql/browser-client";
 
 interface ArticlesTableProps {
   articles: ArticleCardType[];
@@ -59,16 +57,6 @@ export function ArticlesTable({
   const [deleteTitle, setDeleteTitle] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-
-  const getAuthClient = () => {
-    const token = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("access_token="))
-      ?.split("=")[1];
-    return new GraphQLClient(`${API_URL}/graphql`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  };
 
   const handleDelete = async () => {
     if (!deleteId) return;

@@ -17,6 +17,10 @@ import { UserType, AuthPayloadType } from '../typedefs/user.typedef.js';
 import { GraphQLError }           from 'graphql';
 import { ApiError }              from '../../middleware/errorHandler.middleware.js';
 import { logger }               from '../../helpers/logger.js';
+import { 
+  setAuthCookies, 
+  setAccessCookie, 
+  clearAuthCookies } from '../../helpers/auth-cookies.js';
 
 builder.queryField('me', (t) =>
   t.field({
@@ -74,9 +78,11 @@ builder.mutationField('register', (t) =>
   t.field({
     type: AuthPayloadType,
     args: { input: t.arg({ type: RegisterInput, required: true }) },
-    resolve: async (_parent, { input }) => {
+    resolve: async (_parent, { input }, ctx) => {
       try {
-        return await authService.register(input);
+        const { refreshToken, ...payload } = await authService.register(input);
+        setAuthCookies(ctx.res, { accessToken: payload.accessToken, refreshToken });
+        return payload;
       } catch (err) {
         if (err instanceof GraphQLError || err instanceof ApiError) throw err;
         logger.error('register mutation failed', { email: input.email, error: err instanceof Error ? err.message : String(err) });
@@ -90,9 +96,11 @@ builder.mutationField('login', (t) =>
   t.field({
     type: AuthPayloadType,
     args: { input: t.arg({ type: LoginInput, required: true }) },
-    resolve: async (_parent, { input }) => {
+    resolve: async (_parent, { input }, ctx) => {
       try {
-        return await authService.login(input.email, input.password);
+        const { refreshToken, ...payload } = await authService.login(input.email, input.password);
+        setAuthCookies(ctx.res, { accessToken: payload.accessToken, refreshToken });
+        return payload;
       } catch (err) {
         if (err instanceof GraphQLError || err instanceof ApiError) throw err;
         logger.error('login mutation failed', { email: input.email, error: err instanceof Error ? err.message : String(err) });
@@ -102,42 +110,50 @@ builder.mutationField('login', (t) =>
   }),
 );
 
+// No auth scope on purpose: logging out must work even when the access token
+// has already expired. It revokes this device's refresh session and clears cookies.
 builder.mutationField('logout', (t) =>
   t.field({
     type: 'Boolean',
-    authScopes: { authenticated: true },
     resolve: async (_parent, _args, ctx) => {
-      if (!ctx.currentUser) return false;
       try {
-        await authService.logout(ctx.currentUser.id);
-        return true;
+        await authService.logout(ctx.refreshToken);
       } catch (err) {
-        logger.error('logout mutation failed', { userId: ctx.currentUser.id, error: err instanceof Error ? err.message : String(err) });
-        // Logout failures should not block the user — return true anyway.
-        return true;
+        logger.error('logout mutation failed', { error: err instanceof Error ? err.message : String(err) });
+        // Logout failures should not block the user.
       }
+      clearAuthCookies(ctx.res);
+      return true;
     },
   }),
 );
 
+// The refresh token normally comes from the HttpOnly cookie. The optional
+// `token` argument is kept so existing callers keep working.
 builder.mutationField('refreshToken', (t) =>
   t.field({
     type: AuthPayloadType,
-    args: { token: t.arg.string({ required: true }) },
-    resolve: async (_parent, { token }) => {
+    args: { token: t.arg.string({ required: false }) },
+    resolve: async (_parent, { token }, ctx) => {
+      const refreshToken = token ?? ctx.refreshToken;
+      if (!refreshToken) {
+        throw new GraphQLError('No refresh token provided', { extensions: { code: 'UNAUTHENTICATED' } });
+      }
+
       try {
-        const result = await authService.refreshTokens(token);
-        if (!result.user) throw new GraphQLError('User not found.');
+        const result = await authService.refreshTokens(refreshToken);
+        setAccessCookie(ctx.res, result.accessToken);
         return result as { user: NonNullable<typeof result.user>; accessToken: string };
       } catch (err) {
+        // The session is dead: clear cookies so the browser stops retrying.
+        clearAuthCookies(ctx.res);
         if (err instanceof GraphQLError || err instanceof ApiError) throw err;
         logger.error('refreshToken mutation failed', { error: err instanceof Error ? err.message : String(err) });
-        throw new GraphQLError('Token refresh failed. Please log in again.');
+        throw new GraphQLError('Token refresh failed. Please log in again.', { extensions: { code: 'UNAUTHENTICATED' } });
       }
     },
   }),
 );
-
 builder.mutationField('updateProfile', (t) =>
   t.field({
     type: UserType,

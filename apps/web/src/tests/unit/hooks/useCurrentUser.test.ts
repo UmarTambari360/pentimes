@@ -23,8 +23,7 @@ vi.mock("graphql-request", () => ({
 // Mock document.cookie
 Object.defineProperty(document, "cookie", {
   writable: true,
-  value: "access_token=mock-token-value",
-});
+  value: "session_active=1",});
 
 describe("useCurrentUser", () => {
   it("fetches and returns user when token exists", async () => {

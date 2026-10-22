@@ -89,8 +89,7 @@ app.get('/health', async (_req, res) => {
 app.use('/upload', uploadRouter);
 
 // ── GraphQL ───────────────────────────────────────────────────────
-const yoga = createYoga({
-  schema,
+const yoga = createYoga<{ req: express.Request; res: express.Response }>({  schema,
   context: createContext,
   graphiql: isDev ? { title: 'Pen Times API — GraphiQL' } : false,
   maskedErrors: !isDev,
@@ -98,8 +97,7 @@ const yoga = createYoga({
   logging: isDev,
 });
 
-app.use('/graphql', yoga);
-
+app.use('/graphql', (req, res) => yoga(req, res));
 // ── Error handler (must be last) ─────────────────────────────────
 app.use(errorHandler);
 app.use((_req, res) => res.status(404).json({ error: 'Not Found' }));

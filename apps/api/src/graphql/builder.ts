@@ -4,6 +4,7 @@ import ScopeAuthPlugin          from '@pothos/plugin-scope-auth';
 import RelayPlugin              from '@pothos/plugin-relay';
 import type { GraphQLContext }  from './context.js';
 import type { UserRole }        from '@pentimes/shared';
+import { GraphQLError }         from 'graphql';
 
 export const builder = new SchemaBuilder<{
   Context: GraphQLContext;
@@ -29,7 +30,16 @@ export const builder = new SchemaBuilder<{
       isAuthor: ctx.currentUser?.role === 'author' || ctx.currentUser?.role === 'admin',
     }),
 
-    unauthorizedError: () => new Error('You must be logged in to perform this action'),
+    // Clients use the UNAUTHENTICATED code to know they should refresh their
+    // session and retry. A logged-in user lacking permission gets FORBIDDEN.
+    unauthorizedError: (_parent, ctx) =>
+      ctx.currentUser
+        ? new GraphQLError('You do not have permission to perform this action', {
+            extensions: { code: 'FORBIDDEN' },
+          })
+        : new GraphQLError('You must be logged in to perform this action', {
+            extensions: { code: 'UNAUTHENTICATED' },
+          }),
   },
 
   errors: {

@@ -2,8 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+import { API_URL, authFetch } from '@/lib/graphql/browser-client';
 
 type UploadEndpoint = 'article-cover' | 'avatar';
 
@@ -17,15 +16,6 @@ interface UseImageUploadReturn {
   upload: (file: File) => Promise<string | null>;
   uploading: boolean;
   progress: number;
-}
-
-function getAuthToken(): string {
-  return (
-    document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('access_token='))
-      ?.split('=')[1] ?? ''
-  );
 }
 
 export function useImageUpload({
@@ -79,13 +69,10 @@ export function useImageUpload({
 
         setProgress(60);
 
-        const token = getAuthToken();
-        const response = await fetch(`${API_URL}/upload/${endpoint}`, {
+        // Cookies are sent automatically; an expired session is refreshed once.
+        const response = await authFetch(`${API_URL}/upload/${endpoint}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             image: base64,
             fileName: file.name.split('.')[0], // strip extension

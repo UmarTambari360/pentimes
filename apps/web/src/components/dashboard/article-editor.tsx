@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { GraphQLClient } from "graphql-request";
 import { ImageUpload } from "../public/image-upload";
 import {
   X,
@@ -41,8 +40,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { ArticleFullType, CategoryType } from "@/types";
-
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+import { getAuthClient } from "@/lib/graphql/browser-client";
 
 // Slugify helper
 const slugify = (text: string): string =>
@@ -296,16 +294,6 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
       },
     },
   });
-
-  const getAuthClient = () => {
-    const token = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("access_token="))
-      ?.split("=")[1];
-    return new GraphQLClient(`${API_URL}/graphql`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  };
 
   const onSubmit = async (data: EditorInput) => {
     const content = editor?.getHTML() ?? "";

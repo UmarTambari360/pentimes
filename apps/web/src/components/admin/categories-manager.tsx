@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit2, Check, X } from "lucide-react";
 import {
@@ -16,8 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CategoryType } from "@/types";
-
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+import { getAuthClient } from "@/lib/graphql/browser-client";
 
 const CategorySchema = z.object({
   name: z.string().min(2, "At least 2 characters").max(100),
@@ -44,16 +42,6 @@ export function CategoriesManager({
   } = useForm<z.infer<typeof CategorySchema>>({
     resolver: zodResolver(CategorySchema),
   });
-
-  const getAuthClient = () => {
-    const token = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("access_token="))
-      ?.split("=")[1];
-    return new GraphQLClient(`${API_URL}/graphql`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  };
 
   const handleCreate = async (data: z.infer<typeof CategorySchema>) => {
     setSaving(true);

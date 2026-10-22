@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
 import { Plus, Trash2, Calendar } from "lucide-react";
 import {
@@ -26,8 +25,7 @@ import {
 } from "@/components/ui/select";
 import { formatDate } from "@/lib/utils";
 import type { ScheduledProgramType } from "@/types";
-
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+import { getAuthClient } from "@/lib/graphql/browser-client";
 
 const ProgramSchema = z.object({
   title: z.string().min(3).max(200).trim(),
@@ -54,16 +52,6 @@ export function ProgramsManager({
   } = useForm<z.infer<typeof ProgramSchema>>({
     resolver: zodResolver(ProgramSchema),
   });
-
-  const getAuthClient = () => {
-    const token = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("access_token="))
-      ?.split("=")[1];
-    return new GraphQLClient(`${API_URL}/graphql`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  };
 
   const handleCreate = async (data: z.infer<typeof ProgramSchema>) => {
     setSaving(true);

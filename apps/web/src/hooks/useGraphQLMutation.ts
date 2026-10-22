@@ -19,20 +19,7 @@ import { useState, useCallback } from 'react';
 import { GraphQLClient }         from 'graphql-request';
 import { toast }                 from 'sonner';
 import { getErrorMessage }       from '@/lib/errors';
-
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
-
-function getAuthClient(): GraphQLClient {
-  const token = document.cookie
-    .split('; ')
-    .find((r) => r.startsWith('access_token='))
-    ?.split('=')[1];
-
-  return new GraphQLClient(`${API_URL}/graphql`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    credentials: 'include',
-  });
-}
+import { getAuthClient } from '@/lib/graphql/browser-client';
 
 interface MutationOptions<TData, TVariables> {
   /** Variables to pass to the mutation. */

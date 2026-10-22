@@ -30,7 +30,9 @@ export const AuthPayloadType = builder.objectRef<{
 }>('AuthPayload').implement({
   fields: (t) => ({
     user: t.field({ type: UserType, resolve: (p) => p.user }),
-    accessToken: t.exposeString('accessToken'),
+    accessToken: t.exposeString('accessToken', {
+      deprecationReason: 'Auth uses HttpOnly cookies. Do not read tokens in JavaScript.',
+    }),
   }),
 });
 

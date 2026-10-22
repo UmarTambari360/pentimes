@@ -1,4 +1,6 @@
 import type { YogaInitialContext } from 'graphql-yoga';
+import type { Response }           from 'express';
+import { ACCESS_COOKIE, REFRESH_COOKIE } from '../helpers/auth-cookies.js';
 import jwt                         from 'jsonwebtoken';
 import { db }                      from '../config/db.js';
 import { cacheService }            from '../services/redis.service.js';
@@ -15,6 +17,10 @@ export interface GraphQLContext {
   db: typeof db;
   cache: typeof cacheService;
   currentUser: AuthUser | null;
+  /** Express response, used by auth mutations to set/clear HttpOnly cookies. */
+  res: Response;
+  /** Refresh token from the HttpOnly cookie (null when absent). */
+  refreshToken: string | null;
 }
 
 function parseCookies(cookieHeader: string | null): Record<string, string> {
@@ -30,10 +36,15 @@ function parseCookies(cookieHeader: string | null): Record<string, string> {
 }
 
 export async function createContext(
-  initialContext: YogaInitialContext
+  initialContext: YogaInitialContext & { res: Response }
 ): Promise<GraphQLContext> {
   const request = initialContext.request; // Web Fetch Request
   let currentUser: AuthUser | null = null;
+  let refreshToken: string | null = null;
+
+  const cookieHeader = request.headers.get('cookie');
+  const parsedCookies = parseCookies(cookieHeader);
+  refreshToken = parsedCookies[REFRESH_COOKIE] ?? null;
 
   try {
     let token: string | undefined;
@@ -46,11 +57,7 @@ export async function createContext(
 
     // 2. Fallback to cookie
     if (!token) {
-      const cookieHeader = request.headers.get('cookie');
-      if (cookieHeader) {
-        const cookies = parseCookies(cookieHeader);
-        token = cookies['access_token'];
-      }
+      token = parsedCookies[ACCESS_COOKIE];
     }
 
     if (token) {
@@ -74,5 +81,7 @@ export async function createContext(
     db,
     cache: cacheService,
     currentUser,
+    res: initialContext.res,
+    refreshToken,
   };
 }

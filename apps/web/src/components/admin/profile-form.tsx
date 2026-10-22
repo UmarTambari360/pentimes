@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { GraphQLClient } from "graphql-request";
 import { toast } from "sonner";
 import { Shield, Loader2 } from "lucide-react";
 import {
@@ -21,8 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { ImageUpload } from "../public/image-upload";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
-
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+import { getAuthClient } from "@/lib/graphql/browser-client";
 
 const ProfileSchema = z.object({
   name: z
@@ -60,16 +58,6 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ user }: ProfileFormProps) {
-  const getAuthClient = () => {
-    const token = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("access_token="))
-      ?.split("=")[1];
-    return new GraphQLClient(`${API_URL}/graphql`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  };
-
   const {
     register,
     handleSubmit,
