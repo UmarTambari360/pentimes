@@ -56,6 +56,9 @@ const envSchema = z.object({
     .string()
     .min(32, 'INTERNAL_API_KEY must be at least 32 characters')
     .optional(),
+  // Maximum GraphQL query nesting depth (see graphql/plugins/security.plugin.ts).
+  // Real client queries are ~4 levels deep; 6 leaves headroom for new features.
+  GRAPHQL_MAX_DEPTH: z.coerce.number().int().min(1).default(6),
   CORS_ORIGIN:    z.string().default('http://localhost:3000'),
   COOKIE_DOMAIN:  z.string().default('localhost'),
   COOKIE_SECURE:  z

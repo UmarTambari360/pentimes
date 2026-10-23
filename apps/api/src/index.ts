@@ -10,6 +10,7 @@ import { env, isDev }          from './config/env.js';
 import { checkDatabaseHealth } from './config/db.js';
 import { checkRedisHealth }    from './config/redis.js';
 import { schema }              from './graphql/schema.js';
+import { useGraphQLSecurity }  from './graphql/plugins/security.plugin.js';
 import { createContext }       from './graphql/context.js';
 import { errorHandler }        from './middleware/errorHandler.middleware.js';
 import { createRateLimiter, isInternalRequest }   from './middleware/rateLimiter.middleware.js';
@@ -89,8 +90,16 @@ app.get('/health', async (_req, res) => {
 app.use('/upload', uploadRouter);
 
 // ── GraphQL ───────────────────────────────────────────────────────
-const yoga = createYoga<{ req: express.Request; res: express.Response }>({  schema,
+const yoga = createYoga<{ req: express.Request; res: express.Response }>({
+  schema,
   context: createContext,
+  plugins: [
+    useGraphQLSecurity({
+      maxDepth: env.GRAPHQL_MAX_DEPTH,
+      // Introspection stays available in development (GraphiQL, codegen).
+      disableIntrospection: !isDev,
+    }),
+  ],
   graphiql: isDev ? { title: 'Pen Times API — GraphiQL' } : false,
   maskedErrors: !isDev,
   cors: false,
