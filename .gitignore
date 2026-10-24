@@ -52,3 +52,8 @@ coverage/
 
 #Drizzle
 drizzle/
+
+# ── Database backups (backup.sh output / manual pg_dump) ─────────
+backups/
+backup_*.sql
+backup_*.sql.gz

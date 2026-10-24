@@ -56,3 +56,8 @@ Dockerfile*
 # Dev tools
 .husky
 .eslintcache
+
+# Database dumps — never needed in the build context (can be huge / sensitive)
+backups
+backup_*.sql
+backup_*.sql.gz

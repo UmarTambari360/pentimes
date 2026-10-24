@@ -164,7 +164,20 @@ Set up a cron job for daily automated backups:
 ```cron
 0 2 * * * /path/to/pentimes/scripts/backup.sh >> /var/log/pentimes-backup.log 2>&1
 ```
+### Automated backups and restore
 
+```bash
+# One-off backup (writes backups/pentimes_<timestamp>.sql.gz, keeps 14 days)
+./scripts/backup.sh
+
+# Restore a backup (asks you to type the database name; replaces the current data)
+docker compose --env-file .env.production -f docker-compose.prod.yml stop web api
+./scripts/restore.sh backups/pentimes_YYYYMMDD_HHMMSS.sql.gz
+docker compose --env-file .env.production -f docker-compose.prod.yml start api web
+```
+
+Backups stored on the same server don't protect you if the server is lost. Copy
+`backups/` somewhere else regularly (rsync, rclone, or object storage).
 ---
 
 ## 7. Pre-Deploy Checklist
