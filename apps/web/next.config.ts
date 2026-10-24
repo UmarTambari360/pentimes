@@ -27,6 +27,23 @@ const nextConfig: NextConfig = {
     // Allow server-only packages to be imported in server components
   },
 
+  async rewrites() {
+  return [
+    {
+      source: '/graphql',
+      destination: 'http://api:4000/graphql',
+    },
+    {
+      source: '/upload/:path*',
+      destination: 'http://api:4000/upload/:path*',
+    },
+    {
+      source: '/health',
+      destination: 'http://api:4000/health',
+    },
+  ];
+},
+
   // Production logging
   logging: {
     fetches: {
