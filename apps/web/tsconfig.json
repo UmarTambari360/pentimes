@@ -38,6 +38,7 @@
     ".next/types/**/*.ts"
 , "../api/src/graphql/error-formatter.ts"  ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "vitest.config.ts"
   ]
 }

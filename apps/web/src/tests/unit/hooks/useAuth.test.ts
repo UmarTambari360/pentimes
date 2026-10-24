@@ -3,16 +3,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAuth } from '../../../hooks/useAuth.js';
 
-// Mock GraphQLClient
-vi.mock('graphql-request', () => ({
-  GraphQLClient: vi.fn().mockImplementation(() => ({
-    request: vi.fn().mockResolvedValue({
-      login: {
-        user: { id: 'u1', name: 'Test', email: 'test@test.com', role: 'author' },
-        accessToken: 'mock-access-token',
-      },
-    }),
-  })),
+// `useAuth` creates its GraphQLClient once at import time, so the mocked
+// `request` fn must be shared (hoisted) and reconfigured per test.
+const { mockRequest } = vi.hoisted(() => ({ mockRequest: vi.fn() }));
+
+// Keep the real `gql` export (query modules need it); replace only the client.
+// A class is used because the hook calls `new GraphQLClient(...)`.
+vi.mock('graphql-request', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('graphql-request')>()),
+  GraphQLClient: class {
+    request = mockRequest;
+  },
 }));
 
 // Mock sonner
@@ -23,7 +24,12 @@ vi.mock('sonner', () => ({
 describe('useAuth', () => {
   beforeEach(() => {
     Object.defineProperty(document, 'cookie', { writable: true, value: '' });
-    vi.clearAllMocks();
+    mockRequest.mockReset();
+    mockRequest.mockResolvedValue({
+      login: {
+        user: { id: 'u1', name: 'Test', email: 'test@test.com', role: 'author' },
+      },
+    });
   });
 
   it('starts with loading=false', () => {
@@ -38,14 +44,12 @@ describe('useAuth', () => {
       await result.current.login({ email: 'test@test.com', password: 'Password123' });
     });
 
+    expect(mockRequest).toHaveBeenCalledTimes(1);
     expect(result.current.loading).toBe(false);
   });
 
   it('login handles error gracefully', async () => {
-    const { GraphQLClient } = await import('graphql-request');
-    vi.mocked(GraphQLClient).mockImplementationOnce(() => ({
-      request: vi.fn().mockRejectedValue(new Error('Invalid credentials')),
-    }) as never);
+    mockRequest.mockRejectedValueOnce(new Error('Invalid credentials'));
 
     const { result } = renderHook(() => useAuth());
 
