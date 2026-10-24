@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { normalizeBaseUrl } from '@/lib/api-url';
 
 // ──────────────────────────────────────────────────────────────────
 // Session refresh for server-rendered pages.
@@ -12,10 +13,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Anonymous visitors (no refresh cookie) pass straight through at no cost.
 // ──────────────────────────────────────────────────────────────────
 
-const API_BASE =
+const API_BASE = normalizeBaseUrl(
   process.env['INTERNAL_API_URL'] ??
-  process.env['NEXT_PUBLIC_API_URL'] ??
-  'http://localhost:4000';
+    process.env['NEXT_PUBLIC_API_URL'] ??
+    'http://localhost:4000',
+);
 
 const REFRESH_MUTATION = 'mutation RefreshSession { refreshToken { user { id } } }';
 

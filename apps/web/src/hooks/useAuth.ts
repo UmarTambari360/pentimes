@@ -11,8 +11,9 @@ import {
   REGISTER_MUTATION,
   LOGOUT_MUTATION,
 } from '@/lib/graphql/queries/users';
+import { normalizeBaseUrl }      from '@/lib/api-url';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+const API_URL = normalizeBaseUrl(process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000');
 const client  = new GraphQLClient(`${API_URL}/graphql`, { credentials: 'include' });
 
 // Tokens are never exposed to JavaScript: the API sets them as HttpOnly cookies.

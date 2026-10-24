@@ -1,4 +1,5 @@
 import { GraphQLClient } from 'graphql-request';
+import { normalizeBaseUrl } from '@/lib/api-url';
 
 // ──────────────────────────────────────────────────────────────────
 // Browser-side API access.
@@ -9,7 +10,10 @@ import { GraphQLClient } from 'graphql-request';
 // access token using the refresh cookie and retry the request once.
 // ──────────────────────────────────────────────────────────────────
 
-export const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+export const API_URL = normalizeBaseUrl(
+  process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000',
+);
+
 const GRAPHQL_URL = `${API_URL}/graphql`;
 
 const REFRESH_MUTATION = 'mutation RefreshSession { refreshToken { user { id } } }';

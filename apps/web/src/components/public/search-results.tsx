@@ -10,8 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { ArticleCardType } from "@/types";
+import { normalizeBaseUrl } from "@/lib/api-url";
 
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+const API_URL = normalizeBaseUrl(process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000");
 const client = new GraphQLClient(`${API_URL}/graphql`);
 
 const LIMIT = 12;

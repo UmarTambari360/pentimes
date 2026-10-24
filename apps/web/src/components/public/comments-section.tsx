@@ -1,4 +1,3 @@
-//updated with deepseek
 "use client";
 
 import { useState } from "react";
@@ -24,8 +23,12 @@ import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/errors"; // NEW: Import error helper
 import { toast } from "sonner"; // NEW: Import toast for error notifications
 import type { CommentType, CommentConnectionResult } from "@/types";
+import { normalizeBaseUrl } from "@/lib/api-url";
 
-const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000";
+const API_URL = normalizeBaseUrl(
+  process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:4000",
+);
+
 const PAGE_SIZE = 10;
 
 interface CommentsSectionProps {
