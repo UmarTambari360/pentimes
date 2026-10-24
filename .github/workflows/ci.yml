@@ -1,0 +1,82 @@
+# ──────────────────────────────────────────────────────────────────
+# CI — gates pull requests and pushes to main
+#
+# Runs: install (frozen lockfile) → typecheck → unit tests → production build.
+# The build uses the same placeholder NEXT_PUBLIC_* values the Docker build
+# requires, and needs no database, Redis or running API.
+# ──────────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push to the same PR/branch cancels the run that is still in progress.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, test & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Placeholders required by `next build` (see apps/web/Dockerfile).
+      # They are baked into the bundle, so they must never be real secrets.
+      NEXT_PUBLIC_API_URL: https://api.example.com
+      NEXT_PUBLIC_SITE_URL: https://example.com
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm version comes from "packageManager" in the root package.json.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      # Same Node version as the Docker images (node:20.15.1-alpine).
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.15.1
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # api and web consume @pentimes/shared, so build it first.
+      - name: Build shared package
+        run: pnpm --filter shared build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # LINT is intentionally not wired up yet: neither app has an ESLint
+      # config, and `next lint` would stop at an interactive setup prompt.
+      # Once configs exist, enable this step:
+      # - name: Lint
+      #   run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm --filter web test
+
+      # Restores Next.js's incremental build cache to speed up repeat builds.
+      - name: Cache Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**', 'apps/web/*.ts', 'apps/web/*.json') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Build
+        run: pnpm build
