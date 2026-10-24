@@ -32,16 +32,24 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
 ## 2. Build and Start (Production)
 
+> **Always pass `--env-file .env.production`.** Docker Compose only reads a file
+> named `.env` for `${VAR}` substitution in the compose file. Without this flag,
+> `POSTGRES_*`, `REDIS_PASSWORD`, `NEXT_PUBLIC_*` and friends resolve to empty
+> values, so Postgres/Redis boot with the wrong credentials while the API
+> container (which reads `.env.production` itself) fails to authenticate.
+> The `pnpm docker:prod`, `docker:prod:d` and `docker:down:prod` scripts already
+> include it.
+
 ```bash
 # First deploy
-docker compose -f docker-compose.prod.yml up --build -d
+docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d
 
 # Check all containers are healthy
-docker compose -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
 
 # View logs
-docker compose -f docker-compose.prod.yml logs -f api
-docker compose -f docker-compose.prod.yml logs -f web
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f api
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f web
 ```
 
 Migrations run automatically inside the API container before the server starts.
@@ -67,8 +75,8 @@ curl http://localhost:4000/health
 git pull origin main
 
 # Rebuild and restart with zero-downtime (Compose replaces containers one by one)
-docker compose -f docker-compose.prod.yml up --build -d --no-deps api
-docker compose -f docker-compose.prod.yml up --build -d --no-deps web
+docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d --no-deps api
+docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d --no-deps web
 ```
 
 ---
@@ -148,7 +156,7 @@ Set up a cron job for daily automated backups:
 - [ ] JWT secrets ≥ 64 hex characters each
 - [ ] `COOKIE_SECURE=true` and `CORS_ORIGIN` set to production domain
 - [ ] Cloudinary credentials valid
-- [ ] `docker compose -f docker-compose.prod.yml config` runs without errors
+- [ ] `docker compose --env-file .env.production -f docker-compose.prod.yml config` runs without errors
 - [ ] `/health` endpoint returns `{"status":"ok"}`
 - [ ] Database migrations complete without errors
 - [ ] Redis connection confirmed in API logs

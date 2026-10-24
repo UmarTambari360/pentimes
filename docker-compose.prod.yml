@@ -9,6 +9,10 @@
 #   - Redis password required
 #   - Migrations run inside the API container CMD before server start
 #   - Optimized health checks for faster recovery
+#
+# USAGE: variable substitution reads `.env` by default, NOT `.env.production`,
+# so always pass the env file explicitly:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d
 # ──────────────────────────────────────────────────────────────────
 
 services:
