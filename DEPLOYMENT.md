@@ -154,7 +154,7 @@ Set up a cron job for daily automated backups:
 - [ ] All secrets in `.env.production` — none hardcoded in code
 - [ ] `NODE_ENV=production` set
 - [ ] JWT secrets ≥ 64 hex characters each
-- [ ] `COOKIE_SECURE=true` and `CORS_ORIGIN` set to production domain
+- [ ] `COOKIE_SECURE=true` and `CORS_ORIGIN` set to the production domain(s), comma-separated (e.g. `https://pentimes.ng,https://www.pentimes.ng`)
 - [ ] Cloudinary credentials valid
 - [ ] `docker compose --env-file .env.production -f docker-compose.prod.yml config` runs without errors
 - [ ] `/health` endpoint returns `{"status":"ok"}`

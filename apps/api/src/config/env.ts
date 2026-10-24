@@ -59,8 +59,40 @@ const envSchema = z.object({
   // Maximum GraphQL query nesting depth (see graphql/plugins/security.plugin.ts).
   // Real client queries are ~4 levels deep; 6 leaves headroom for new features.
   GRAPHQL_MAX_DEPTH: z.coerce.number().int().min(1).default(6),
-  CORS_ORIGIN:    z.string().default('http://localhost:3000'),
-  COOKIE_DOMAIN:  z.string().default('localhost'),
+  // Comma-separated list of browser origins allowed to call the API, e.g.
+  //   CORS_ORIGIN=https://pentimes.ng,https://www.pentimes.ng
+  // A single value still works. Parsed into a normalized string[] (scheme + host
+  // [+ port], no path or trailing slash) so it matches the browser's Origin header.
+  CORS_ORIGIN: z
+    .string()
+    .default('http://localhost:3000')
+    .transform((value, ctx) => {
+      const origins: string[] = [];
+
+      for (const raw of value.split(',').map((o) => o.trim()).filter(Boolean)) {
+        try {
+          const url = new URL(raw);
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('protocol');
+          origins.push(url.origin);
+        } catch {
+          ctx.addIssue({
+            code:    z.ZodIssueCode.custom,
+            message: `CORS_ORIGIN contains an invalid origin: "${raw}" (expected e.g. https://example.com)`,
+          });
+          return z.NEVER;
+        }
+      }
+
+      if (origins.length === 0) {
+        ctx.addIssue({
+          code:    z.ZodIssueCode.custom,
+          message: 'CORS_ORIGIN must contain at least one origin',
+        });
+        return z.NEVER;
+      }
+
+      return [...new Set(origins)];
+    }),  COOKIE_DOMAIN:  z.string().default('localhost'),
   COOKIE_SECURE:  z
     .string()
     .transform((v) => v === 'true')
