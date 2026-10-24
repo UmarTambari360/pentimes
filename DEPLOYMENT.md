@@ -54,6 +54,24 @@ docker compose --env-file .env.production -f docker-compose.prod.yml logs -f web
 
 Migrations run automatically inside the API container before the server starts.
 
+### Create the first admin account
+
+Migrations create empty tables, and public sign-up only creates `reader` accounts,
+so create your first admin once after the stack is up. Do **not** run
+`db:seed` in production: it inserts sample data with publicly-known passwords.
+
+```bash
+# Prompts for the password with hidden input (recommended)
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  exec -it api node dist/db/create-admin.js --email you@pentimes.ng --name "Your Name"
+```
+
+- Password minimum for admins is 12 characters.
+- Re-running for an existing admin is a safe no-op.
+- To promote an existing reader/author instead, add `--promote` (their password is unchanged).
+- Non-interactive alternative: set `ADMIN_EMAIL`, `ADMIN_NAME` and `ADMIN_PASSWORD`
+  for that one command (for example `exec -e ADMIN_PASSWORD=... api node dist/db/create-admin.js`).
+
 ---
 
 ## 3. Health Checks
@@ -163,6 +181,7 @@ Set up a cron job for daily automated backups:
 - [ ] No `console.log` debug statements in production code
 - [ ] Nginx configured with SSL certificates
 - [ ] Database backup strategy in place
+- [ ] First admin created with create-admin (never run db:seed in production) to the Pre-Deploy Checklist.
 
 ---
 
