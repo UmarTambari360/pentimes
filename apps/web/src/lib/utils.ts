@@ -8,13 +8,22 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Format a date string for display
  * e.g. "June 12, 2025"
+ *
+ * Returns an empty string for missing or unparseable input. Intl's format()
+ * throws `RangeError: Invalid time value` on an Invalid Date, which would
+ * crash server rendering and client hydration for the whole page.
  */
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return '';
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+
   return new Intl.DateTimeFormat('en-NG', {
     year:  'numeric',
     month: 'long',
     day:   'numeric',
-  }).format(new Date(dateString));
+  }).format(date);
 }
 
 /**

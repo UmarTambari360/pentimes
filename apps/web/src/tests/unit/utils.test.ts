@@ -17,8 +17,15 @@ describe('formatDate', () => {
   });
 
   it('handles invalid date gracefully', () => {
-    // Invalid date just returns Invalid Date string — don't throw
+    // Invalid input must never throw (it would crash SSR); it renders nothing
     expect(() => formatDate('not-a-date')).not.toThrow();
+    expect(formatDate('not-a-date')).toBe('');
+  });
+
+  it('returns an empty string for empty, null or undefined input', () => {
+    expect(formatDate('')).toBe('');
+    expect(formatDate(null)).toBe('');
+    expect(formatDate(undefined)).toBe('');
   });
 });
 
