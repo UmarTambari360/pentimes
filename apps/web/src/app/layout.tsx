@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Playfair_Display, DM_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -45,18 +46,29 @@ export const metadata: Metadata = {
   authors: [{ name: "Pen Times Editorial Team" }],
   creator: "Pen Times Magazine",
   publisher: "Pen Times Media",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     locale: "en_NG",
     siteName: "Pen Times Magazine",
     title: "Pen Times Magazine — Katsina's Voice",
-    description:
-      "Your trusted source for news, politics, education, and community development from Katsina State and beyond.",
+    description: 
+    "Your trusted source for news, politics, education, and community development from Katsina State and beyond.",
+    images: [DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: "Pen Times Magazine",
     description: "Katsina's trusted digital magazine.",
+    images: [DEFAULT_OG_IMAGE.url],
   },
   robots: {
     index: true,

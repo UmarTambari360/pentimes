@@ -11,6 +11,7 @@ import {
   Facebook,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "About Us — Pen Times Magazine",
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
     title: "About Pen Times Magazine",
     description:
       "Our mission, our team, and our commitment to quality journalism from Katsina State.",
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

@@ -1,4 +1,3 @@
-// apps/web/src/app/(public)/articles/[slug]/page.tsx
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -13,6 +12,7 @@ import { AuthorAvatar } from "@/components/ui/author-avatar";
 import { ArticleActions } from "@/components/public/article-actions";
 import { CommentsSection } from "@/components/public/comments-section";
 import { formatDate, formatReadingTime } from "@/lib/utils";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import type {
   ArticleFullType,
   ArticleCardType,
@@ -48,7 +48,9 @@ export async function generateMetadata({
       openGraph: {
         title: article.title,
         description: article.excerpt ?? undefined,
-        images: article.coverImage ? [{ url: article.coverImage }] : [],
+        images: article.coverImage
+          ? [{ url: article.coverImage }]
+          : [DEFAULT_OG_IMAGE],
         type: "article",
         publishedTime: article.publishedAt ?? undefined,
         authors: [article.author.name],
@@ -57,7 +59,9 @@ export async function generateMetadata({
         card: "summary_large_image",
         title: article.title,
         description: article.excerpt ?? undefined,
-        images: article.coverImage ? [article.coverImage] : [],
+        images: article.coverImage
+          ? [article.coverImage]
+          : [DEFAULT_OG_IMAGE.url],
       },
     };
   } catch {
