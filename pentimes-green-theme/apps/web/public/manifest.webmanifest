@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Pen Times Magazine — Katsina's Voice",
+  "short_name": "Pen Times",
+  "description": "Your trusted source for news, politics, education, and community development from Katsina State and beyond.",
+  "lang": "en-NG",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6faf6",
+  "theme_color": "#2b953b",
+  "categories": ["news", "magazines"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

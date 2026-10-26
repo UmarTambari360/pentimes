@@ -1,0 +1,413 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────
+   Pen Times Magazine — Design Tokens
+   Brand palette: logo green + forest-black ink + soft green-tinted paper
+   Logo green = #2b953b  ->  hsl(128 55% 38%)  ->  brand-500
+   ───────────────────────────────────────────── */
+
+@layer base {
+    :root {
+        /* Ink scale — forest black (matches the black wordmark in the logo) */
+        --ink: 140 25% 7%;
+        --ink-50: 140 18% 96%;
+        --ink-100: 140 14% 92%;
+        --ink-200: 140 12% 80%;
+        --ink-300: 140 10% 66%;
+        --ink-400: 140 9% 52%;
+        --ink-500: 140 10% 38%;
+        --ink-600: 140 13% 28%;
+        --ink-700: 140 18% 20%;
+        --ink-800: 140 22% 12%;
+        --ink-900: 140 25% 7%;
+
+        /* Brand green scale — 500 is the exact logo green */
+        --brand: 128 55% 38%;
+        --brand-50: 130 45% 96%;
+        --brand-100: 130 45% 90%;
+        --brand-200: 130 42% 80%;
+        --brand-300: 130 42% 66%;
+        --brand-400: 129 48% 48%;
+        --brand-500: 128 55% 38%;
+        --brand-600: 128 58% 30%;
+        --brand-700: 128 60% 24%;
+        --brand-800: 128 62% 19%;
+        --brand-900: 128 64% 13%;
+        --brand-950: 128 66% 8%;
+
+        /* LEGACY ALIAS — components still use `amber-*` class names and
+           variant="amber". Pointing them at the brand scale recolors the whole
+           UI without touching those components. New code should use `brand-*`. */
+        --amber: var(--brand);
+        --amber-50: var(--brand-50);
+        --amber-100: var(--brand-100);
+        --amber-200: var(--brand-200);
+        --amber-300: var(--brand-300);
+        --amber-400: var(--brand-400);
+        --amber-500: var(--brand-500);
+        --amber-600: var(--brand-600);
+        --amber-700: var(--brand-700);
+        --amber-800: var(--brand-800);
+        --amber-900: var(--brand-900);
+        --amber-950: var(--brand-950);
+
+        /* Paper — faint green-tinted whites */
+        --paper: 120 20% 97%;
+        --paper-warm: 125 22% 93%;
+        --paper-cool: 130 12% 94%;
+
+        /* shadcn semantic tokens — light mode */
+        --background: 120 20% 97%;
+        --foreground: 140 25% 7%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 140 25% 7%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 140 25% 7%;
+
+        --primary: 140 25% 7%;
+        --primary-foreground: 120 20% 97%;
+
+        --secondary: 125 22% 93%;
+        --secondary-foreground: 140 25% 7%;
+
+        --muted: 130 12% 94%;
+        --muted-foreground: 140 8% 38%;
+
+        --accent: 128 55% 38%;
+        --accent-foreground: 140 25% 7%;
+
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+
+        --border: 130 12% 87%;
+        --input: 130 12% 87%;
+        --ring: 128 55% 38%;
+
+        --success: 142 72% 42%;
+        --warning: 38 92% 50%;
+        --info: 210 80% 52%;
+
+        --radius: 0.375rem;
+    }
+
+    .dark {
+        --background: 140 22% 6%;
+        --foreground: 120 15% 94%;
+
+        --card: 140 20% 9%;
+        --card-foreground: 120 15% 94%;
+
+        --popover: 140 20% 9%;
+        --popover-foreground: 120 15% 94%;
+
+        --primary: 120 15% 94%;
+        --primary-foreground: 140 22% 6%;
+
+        --secondary: 140 16% 14%;
+        --secondary-foreground: 120 15% 94%;
+
+        --muted: 140 16% 14%;
+        --muted-foreground: 130 10% 62%;
+
+        --accent: 128 55% 38%;
+        --accent-foreground: 140 25% 7%;
+
+        --destructive: 0 72% 50%;
+        --destructive-foreground: 0 0% 100%;
+
+        --border: 140 14% 19%;
+        --input: 140 14% 19%;
+        --ring: 129 48% 48%;
+
+        --ink: 120 15% 94%;
+        --paper: 140 22% 6%;
+        --paper-warm: 140 20% 9%;
+
+        /* On dark surfaces the 600/700 steps (used as text/hover colors in the
+           light theme) flip to lighter greens so they stay readable.
+           The 50-500 and 800-950 steps are intentionally unchanged. */
+        --brand-600: 129 48% 48%;
+        --brand-700: 130 42% 66%;
+    }
+
+    * {
+        @apply border-border;
+    }
+
+    html {
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        @apply bg-background text-foreground font-sans;
+        font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    }
+
+    /* ── Typographic defaults ── */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-serif tracking-tight;
+        font-feature-settings: "kern" 1, "liga" 1;
+    }
+
+    p {
+        @apply leading-relaxed;
+    }
+
+    /* ── Selection ── */
+    ::selection {
+        background-color: hsl(var(--amber) / 0.25);
+        color: hsl(var(--foreground));
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: hsl(var(--muted));
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: hsl(var(--ink-400));
+        border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--ink-600));
+    }
+}
+
+@layer components {
+
+    /* ── Focus ring ── */
+    .focus-ring {
+        @apply outline-none ring-2 ring-amber-500 ring-offset-2 ring-offset-background;
+    }
+
+    /* ── Prose article content ── */
+    .article-prose {
+        @apply text-body leading-[1.8] text-foreground;
+    }
+
+    .article-prose h2 {
+        @apply text-headline-lg font-serif mt-10 mb-4 text-foreground;
+    }
+
+    .article-prose h3 {
+        @apply text-headline font-serif mt-8 mb-3 text-foreground;
+    }
+
+    .article-prose p {
+        @apply mb-6 text-body;
+    }
+
+    .article-prose blockquote {
+        @apply border-l-4 border-amber-500 pl-6 my-8 italic text-muted-foreground text-body-lg;
+    }
+
+    .article-prose a {
+        @apply text-amber-600 underline decoration-amber-500/50 underline-offset-2 hover:decoration-amber-500;
+    }
+
+    .article-prose img {
+        @apply rounded-md my-8 w-full;
+    }
+
+    .article-prose ul,
+    .article-prose ol {
+        @apply mb-6 pl-6;
+    }
+
+    .article-prose li {
+        @apply mb-2;
+    }
+
+    /* ── Breaking news ticker ── */
+    .ticker-wrap {
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    .ticker-content {
+        display: inline-block;
+        animation: ticker-scroll 40s linear infinite;
+    }
+
+    .ticker-content:hover {
+        animation-play-state: paused;
+    }
+
+    /* ── Section rule ── */
+    .section-rule {
+        @apply border-t-2 border-foreground mb-6 pt-4;
+    }
+
+    /* ── Hover lift ── */
+    .hover-lift {
+        @apply transition-transform duration-200 ease-out hover:-translate-y-0.5;
+    }
+}
+
+@layer utilities {
+
+    /* ── Text balance ── */
+    .text-balance {
+        text-wrap: balance;
+    }
+
+    .text-pretty {
+        text-wrap: pretty;
+    }
+
+    /* ── Clip text ── */
+    .text-gradient {
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* ── Drag none ── */
+    .no-drag {
+        -webkit-user-drag: none;
+        user-select: none;
+    }
+}
+
+/* ── Animations ── */
+@keyframes ticker-scroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-in-left {
+    from {
+        opacity: 0;
+        transform: translateX(-16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-fade-in {
+    animation: fade-in 0.4s ease-out forwards;
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.animate-slide-in-left {
+    animation: slide-in-left 0.4s ease-out forwards;
+}
+
+.animate-scale-in {
+    animation: scale-in 0.3s ease-out forwards;
+}
+
+/* ── Tiptap editor ── */
+.ProseMirror {
+    @apply min-h-[400px] p-4 outline-none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+    @apply text-muted-foreground pointer-events-none float-left h-0;
+    content: attr(data-placeholder);
+}
+
+.ProseMirror blockquote {
+    @apply border-l-4 border-amber-500 pl-4 italic text-muted-foreground;
+}
+
+.ProseMirror pre {
+    @apply bg-muted p-4 rounded-md font-mono text-sm my-4;
+}
+
+.ProseMirror code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.ProseMirror h1 {
+    @apply text-display-lg font-serif mt-6 mb-3;
+}
+
+.ProseMirror h2 {
+    @apply text-headline-xl font-serif mt-5 mb-2;
+}
+
+.ProseMirror h3 {
+    @apply text-headline-lg font-serif mt-4 mb-2;
+}
+
+.ProseMirror ul {
+    @apply list-disc pl-6 my-3;
+}
+
+.ProseMirror ol {
+    @apply list-decimal pl-6 my-3;
+}
+
+.ProseMirror li {
+    @apply mb-1;
+}
+
+.ProseMirror a {
+    @apply text-amber-600 underline;
+}
