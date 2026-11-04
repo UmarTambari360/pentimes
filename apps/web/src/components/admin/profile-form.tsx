@@ -21,6 +21,7 @@ import { ImageUpload } from "../public/image-upload";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
 import { getAuthClient } from "@/lib/graphql/browser-client";
+import { getErrorMessage } from "@/lib/errors";
 
 const ProfileSchema = z.object({
   name: z
@@ -98,8 +99,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     toast.promise(promise(), {
       loading: "Saving profile…",
       success: "Profile updated successfully!",
-      error: (err) =>
-        err instanceof Error ? err.message : "Failed to update profile.",
+      error: (err) => getErrorMessage(err),
     });
   };
 
@@ -118,11 +118,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     toast.promise(promise(), {
       loading: "Changing password…",
       success: "Password changed successfully!",
-      error: (err) => {
-        const msg =
-          err instanceof Error ? err.message : "Failed to change password.";
-        return msg.replace("GraphQL Error: ", "");
-      },
+      error: (err) => getErrorMessage(err),
     });
   };
 
