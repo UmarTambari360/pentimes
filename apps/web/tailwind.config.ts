@@ -23,6 +23,22 @@ const config: Config = {
           800: 'hsl(var(--ink-800))',
           900: 'hsl(var(--ink-900))',
         },
+        // `brand` is the canonical palette. `amber` is a legacy alias kept so
+        // existing `amber-*` classes keep working (they now resolve to green).
+        brand: {
+          DEFAULT: 'hsl(var(--brand))',
+          50:  'hsl(var(--brand-50))',
+          100: 'hsl(var(--brand-100))',
+          200: 'hsl(var(--brand-200))',
+          300: 'hsl(var(--brand-300))',
+          400: 'hsl(var(--brand-400))',
+          500: 'hsl(var(--brand-500))',
+          600: 'hsl(var(--brand-600))',
+          700: 'hsl(var(--brand-700))',
+          800: 'hsl(var(--brand-800))',
+          900: 'hsl(var(--brand-900))',
+          950: 'hsl(var(--brand-950))',
+        },
         amber: {
           DEFAULT: 'hsl(var(--amber))',
           50:  'hsl(var(--amber-50))',
@@ -33,6 +49,9 @@ const config: Config = {
           500: 'hsl(var(--amber-500))',
           600: 'hsl(var(--amber-600))',
           700: 'hsl(var(--amber-700))',
+          800: 'hsl(var(--amber-800))',
+          900: 'hsl(var(--amber-900))',
+          950: 'hsl(var(--amber-950))',
         },
         paper: {
           DEFAULT: 'hsl(var(--paper))',

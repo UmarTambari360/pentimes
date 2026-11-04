@@ -75,7 +75,7 @@ export function DashboardSidebar({ className, user }: DashboardSidebarProps) {
         <div className="px-3 pt-3 shrink-0">
           <Link
             href="/dashboard/articles/new"
-            className="flex items-center justify-center gap-2 w-full h-9 bg-amber-500 hover:bg-amber-600 text-ink-900 font-semibold text-body-sm rounded-md transition-colors"
+            className="flex items-center justify-center gap-2 w-full h-9 bg-amber-500 hover:bg-amber-400 text-ink-900 font-semibold text-body-sm rounded-md transition-colors"
           >
             <PenSquare className="h-4 w-4" />
             Write Article

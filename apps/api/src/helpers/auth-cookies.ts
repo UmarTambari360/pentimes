@@ -1,6 +1,6 @@
 import jwt                  from 'jsonwebtoken';
 import type { Response }    from 'express';
-import { isProd }           from '../config/env.js';
+import { env, isProd }      from '../config/env.js';
 
 // ──────────────────────────────────────────────────────────────────
 // Cookie names
@@ -21,10 +21,19 @@ function msUntilExpiry(token: string): number {
   return exp ? Math.max(exp * 1000 - Date.now(), 0) : 0;
 }
 
+// When the web app (pentimes.ng) and the API (api.pentimes.ng) live on different
+// subdomains, cookies must be scoped to the parent domain so the Next.js server
+// can read them. Left unset in development, where "localhost" is a host-only cookie.
+const cookieDomain =
+  isProd && env.COOKIE_DOMAIN && env.COOKIE_DOMAIN !== 'localhost'
+    ? env.COOKIE_DOMAIN
+    : undefined;
+
 const baseOptions = {
   secure:   isProd,
   sameSite: 'lax' as const,
   path:     '/',
+  ...(cookieDomain ? { domain: cookieDomain } : {}),
 };
 
 /** Set (or refresh) the access cookie only. Used after a token refresh. */

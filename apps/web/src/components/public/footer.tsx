@@ -1,5 +1,6 @@
 'use client'
 
+import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { Twitter, Facebook, Instagram, Mail } from "lucide-react";
@@ -66,20 +67,14 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-amber-500 rounded-sm flex items-center justify-center">
-                <span className="text-ink-900 font-serif font-black text-sm leading-none">
-                  P
-                </span>
-              </div>
-              <div>
-                <span className="font-serif font-black text-xl tracking-tight text-white">
-                  Pen Times
-                </span>
-                <span className="block text-[0.55rem] uppercase tracking-[0.2em] text-white/50 leading-none mt-0.5">
-                  Magazine
-                </span>
-              </div>
+            <Link href="/" className="inline-flex mb-4" aria-label="Pen Times home">
+              <Image
+                src="/logo.png"
+                alt="Pen Times Magazine"
+                width={72}
+                height={72}
+                className="h-16 w-16 object-contain"
+              />
             </Link>
             <p className="text-caption text-white/60 leading-relaxed mb-4">
               Katsina&apos;s most trusted source for news, politics, education,

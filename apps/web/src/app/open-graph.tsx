@@ -28,7 +28,7 @@ export default function Image() {
         flexDirection: "column",
         alignItems: "flex-start",
         justifyContent: "flex-end",
-        backgroundColor: "#0d1117",
+        backgroundColor: "#0b130e",
         padding: "60px",
         fontFamily: "Georgia, serif",
         position: "relative",
@@ -40,7 +40,7 @@ export default function Image() {
           position: "absolute",
           inset: 0,
           backgroundImage:
-            "linear-gradient(rgba(245,158,11,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.03) 1px, transparent 1px)",
+            "linear-gradient(rgba(43,149,59,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(43,149,59,0.05) 1px, transparent 1px)",
           backgroundSize: "40px 40px",
         }}
       />
@@ -53,7 +53,7 @@ export default function Image() {
           left: 0,
           right: 0,
           height: "6px",
-          background: "linear-gradient(90deg, #f59e0b, #d97706)",
+          background: "linear-gradient(90deg, #2b953b, #186222)",
         }}
       />
 
@@ -72,14 +72,14 @@ export default function Image() {
           style={{
             width: "44px",
             height: "44px",
-            backgroundColor: "#f59e0b",
+            backgroundColor: "#2b953b",
             borderRadius: "4px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: "24px",
             fontWeight: 900,
-            color: "#0d1117",
+            color: "#0b130e",
           }}
         >
           P
@@ -116,7 +116,7 @@ export default function Image() {
             fontWeight: 700,
             letterSpacing: "3px",
             textTransform: "uppercase",
-            color: "#f59e0b",
+            color: "#2b953b",
           }}
         >
           Nigeria's Regional Voice

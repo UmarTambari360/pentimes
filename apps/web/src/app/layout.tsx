@@ -1,29 +1,41 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, DM_Sans, DM_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "./providers";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
+const playfair = localFont({
+  src: [
+    {
+      path: "./fonts/playfair-display-latin.woff2",
+      weight: "400 900",
+      style: "normal",
+    },
+    {
+      path: "./fonts/playfair-display-italic-latin.woff2",
+      weight: "400 900",
+      style: "italic",
+    },
+  ],
   variable: "--font-playfair",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
-  style: ["normal", "italic"],
 });
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
+const dmSans = localFont({
+  src: "./fonts/dm-sans-latin.woff2",
+  weight: "300 900",
   variable: "--font-dm-sans",
   display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
 });
 
-const dmMono = DM_Mono({
-  subsets: ["latin"],
+const dmMono = localFont({
+  src: [
+    { path: "./fonts/dm-mono-300-latin.woff2", weight: "300" },
+    { path: "./fonts/dm-mono-400-latin.woff2", weight: "400" },
+    { path: "./fonts/dm-mono-500-latin.woff2", weight: "500" },
+  ],
   variable: "--font-dm-mono",
   display: "swap",
-  weight: ["300", "400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -50,7 +62,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
@@ -81,8 +93,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f9f7f2" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d0f14" },
+    { media: "(prefers-color-scheme: light)", color: "#f6faf6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c130e" },
   ],
 };
 

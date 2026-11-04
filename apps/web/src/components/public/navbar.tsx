@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,19 +81,14 @@ export function Navbar() {
         {/* Masthead */}
         <div className="flex items-center justify-between py-3 border-b border-border/50">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-ink-900 dark:bg-amber-500 rounded-sm flex items-center justify-center">
-              <span className="text-white dark:text-ink-900 font-serif font-black text-sm leading-none">
-                P
-              </span>
-            </div>
-            <div>
-              <span className="font-serif font-black text-xl tracking-tight text-foreground group-hover:text-amber-700 transition-colors">
-                Pen Times
-              </span>
-              <span className="hidden sm:block text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground leading-none mt-0.5">
-                Magazine
-              </span>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="Pen Times Magazine"
+              width={64}
+              height={64}
+              priority
+              className="h-14 w-14 shrink-0 object-contain"
+            />
           </Link>
 
           <div className="hidden sm:block text-caption text-muted-foreground text-center">

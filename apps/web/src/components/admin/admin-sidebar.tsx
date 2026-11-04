@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -47,21 +48,18 @@ export function AdminSidebar({ className }: { className?: string }) {
     <aside className={cn("flex flex-col h-full", className)}>
       {/* Brand */}
       <div className="p-4 border-b border-border">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-ink-900 dark:bg-amber-500 rounded-sm flex items-center justify-center">
-            <span className="text-white dark:text-ink-900 font-serif font-black text-xs">
-              P
-            </span>
-          </div>
-          <div>
-            <span className="font-serif font-bold text-body text-foreground">
-              Pen Times
-            </span>
-            <span className="flex items-center gap-1 text-[0.6rem] text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider">
-              <Shield className="h-2.5 w-2.5" />
-              Admin
-            </span>
-          </div>
+        <Link href="/" className="flex items-center gap-3">
+          <Image
+            src="/logo.png"
+            alt="Pen Times Magazine"
+            width={56}
+            height={56}
+            className="h-12 w-12 shrink-0 object-contain"
+          />
+          <span className="flex items-center gap-1 text-[0.6rem] text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider">
+            <Shield className="h-2.5 w-2.5" />
+            Admin
+          </span>
         </Link>
       </div>
 
