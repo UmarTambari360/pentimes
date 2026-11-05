@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -43,14 +44,13 @@ export function DashboardSidebar({ className, user }: DashboardSidebarProps) {
       {/* Brand */}
       <div className="p-4 border-b border-border shrink-0">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 bg-ink-900 dark:bg-amber-500 rounded-sm flex items-center justify-center transition-colors">
-            <span className="text-white dark:text-ink-900 font-serif font-black text-xs">
-              P
-            </span>
-          </div>
-          <span className="font-serif font-bold text-body text-foreground group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
-            Pen Times
-          </span>
+          <Image
+            src="/logo.png"
+            alt="Pen Times Magazine"
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 object-contain"
+          />
         </Link>
       </div>
 

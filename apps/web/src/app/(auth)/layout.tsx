@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function AuthLayout({
   children,
@@ -9,14 +10,13 @@ export default function AuthLayout({
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-border px-4 py-3">
         <Link href="/" className="flex items-center gap-2 w-fit">
-          <div className="w-7 h-7 bg-ink-900 dark:bg-amber-500 rounded-sm flex items-center justify-center">
-            <span className="text-white dark:text-ink-900 font-serif font-black text-xs">
-              P
-            </span>
-          </div>
-          <span className="font-serif font-bold text-body text-foreground">
-            Pen Times
-          </span>
+          <Image
+            src="/logo.png"
+            alt="Pen Times Magazine"
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 object-contain"
+          />
         </Link>
       </header>
       <main className="flex-1 flex items-center justify-center p-4">
