@@ -13,7 +13,7 @@ export const CategoryType = builder
 
       createdAt: t.field({
         type: 'String',
-        resolve: (category) => category.createdAt.toISOString(),
+        resolve: (category) => new Date(category.createdAt).toISOString(),
       }),
     }),
   });

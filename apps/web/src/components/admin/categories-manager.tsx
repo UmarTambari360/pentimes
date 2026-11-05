@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit2, Check, X } from "lucide-react";
 import {
+  GET_CATEGORIES,
   CREATE_CATEGORY,
   DELETE_CATEGORY,
   UPDATE_CATEGORY,
@@ -53,6 +54,26 @@ export function CategoriesManager({
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (initialCategories.length > 0) {
+      setCategories(initialCategories);
+    }
+  }, [initialCategories]);
+
+  useEffect(() => {
+    if (categories.length === 0) {
+      const client = getAuthClient();
+      client
+        .request<{ categories: CategoryType[] }>(GET_CATEGORIES)
+        .then((data) => {
+          if (data.categories?.length) {
+            setCategories(data.categories);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [categories.length]);
 
   const {
     register,

@@ -31,6 +31,7 @@ import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import { CREATE_ARTICLE, UPDATE_ARTICLE } from "@/lib/graphql/queries/articles";
+import { GET_CATEGORIES } from "@/lib/graphql/queries/categories";
 import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -234,12 +235,40 @@ function EditorToolbar({ editor }: { editor: Editor }) {
   );
 }
 
-export function ArticleEditor({ categories, article }: ArticleEditorProps) {
+export function ArticleEditor({ categories: initialCategories, article }: ArticleEditorProps) {
   const router = useRouter();
   const isEditing = Boolean(article);
+  const [categories, setCategories] = useState<CategoryType[]>(initialCategories);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEditing);
+
+  useEffect(() => {
+    if (initialCategories.length > 0) {
+      setCategories(initialCategories);
+    }
+  }, [initialCategories]);
+
+  useEffect(() => {
+    if (categories.length === 0) {
+      setLoadingCategories(true);
+      const client = getAuthClient();
+      client
+        .request<{ categories: CategoryType[] }>(GET_CATEGORIES)
+        .then((data) => {
+          if (data.categories?.length) {
+            setCategories(data.categories);
+          }
+        })
+        .catch(() => {
+          // silently ignored; fallback alert handled in UI
+        })
+        .finally(() => {
+          setLoadingCategories(false);
+        });
+    }
+  }, [categories.length]);
 
   const {
     register,
@@ -508,9 +537,16 @@ export function ArticleEditor({ categories, article }: ArticleEditorProps) {
               </span>
             </Label>
             {categories.length === 0 ? (
-              <p className="text-body-sm text-muted-foreground italic">
-                No categories available. Ask an admin to create some.
-              </p>
+              loadingCategories ? (
+                <div className="flex items-center gap-2 text-body-sm text-muted-foreground py-1">
+                  <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                  <span>Loading categories…</span>
+                </div>
+              ) : (
+                <p className="text-body-sm text-muted-foreground italic">
+                  No categories available. Ask an admin to create some.
+                </p>
+              )
             ) : (
               <div className="flex flex-wrap gap-2">
                 {categories.map((cat) => {

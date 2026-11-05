@@ -45,12 +45,12 @@ export const CommentType = builder
 
       createdAt: t.field({
         type: 'String',
-        resolve: (c) => c.createdAt.toISOString(),
+        resolve: (c) => new Date(c.createdAt).toISOString(),
       }),
 
       updatedAt: t.field({
         type: 'String',
-        resolve: (c) => c.updatedAt.toISOString(),
+        resolve: (c) => new Date(c.updatedAt).toISOString(),
       }),
 
       author: t.field({
@@ -71,12 +71,12 @@ export const CommentWithContextType = builder
 
       createdAt: t.field({
         type: 'String',
-        resolve: (c) => c.createdAt.toISOString(),
+        resolve: (c) => new Date(c.createdAt).toISOString(),
       }),
 
       updatedAt: t.field({
         type: 'String',
-        resolve: (c) => c.updatedAt.toISOString(),
+        resolve: (c) => new Date(c.updatedAt).toISOString(),
       }),
 
       author: t.field({

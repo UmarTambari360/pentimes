@@ -13,12 +13,12 @@ export const UserType = builder.objectRef<PublicUser>('User').implement({
 
     createdAt: t.field({
       type: 'String',
-      resolve: (user) => user.createdAt.toISOString(),
+      resolve: (user) => new Date(user.createdAt).toISOString(),
     }),
 
     updatedAt: t.field({
       type: 'String',
-      resolve: (user) => user.updatedAt.toISOString(),
+      resolve: (user) => new Date(user.updatedAt).toISOString(),
     }),
   }),
 });

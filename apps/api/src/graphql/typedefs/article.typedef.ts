@@ -37,17 +37,17 @@ export const ArticleType = builder
       publishedAt: t.field({
         type: 'String',
         nullable: true,
-        resolve: (article) => article.publishedAt?.toISOString() ?? null,
+        resolve: (article) => (article.publishedAt ? new Date(article.publishedAt).toISOString() : null),
       }),
 
       createdAt: t.field({
         type: 'String',
-        resolve: (article) => article.createdAt.toISOString(),
+        resolve: (article) => new Date(article.createdAt).toISOString(),
       }),
 
       updatedAt: t.field({
         type: 'String',
-        resolve: (article) => article.updatedAt.toISOString(),
+        resolve: (article) => new Date(article.updatedAt).toISOString(),
       }),
 
       // Use the actual type references (not strings)

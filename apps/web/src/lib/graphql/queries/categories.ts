@@ -30,6 +30,8 @@ export const CREATE_CATEGORY = gql`
       id
       name
       slug
+      description
+      createdAt
     }
   }
 `;
@@ -40,6 +42,8 @@ export const UPDATE_CATEGORY = gql`
       id
       name
       slug
+      description
+      createdAt
     }
   }
 `;

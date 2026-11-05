@@ -1,11 +1,18 @@
 import { db }         from '../config/db.js';
 import { categories } from '../db/schema/index.js';
-import { eq }         from 'drizzle-orm';
+import { eq, ilike }  from 'drizzle-orm';
 
 export async function findAllCategories() {
   return db.query.categories.findMany({
     orderBy: (c, { asc }) => [asc(c.name)],
   });
+}
+
+export async function findCategoryByName(name: string) {
+  const result = await db.query.categories.findFirst({
+    where: ilike(categories.name, name),
+  });
+  return result ?? null;
 }
 
 export async function findCategoryBySlug(slug: string) {

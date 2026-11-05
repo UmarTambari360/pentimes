@@ -2,6 +2,7 @@
 import { builder } from '../builder.js';
 import {
   findAllCategories,
+  findCategoryByName,
   findCategoryBySlug,
   findCategoryById,
   createCategory,
@@ -66,11 +67,26 @@ builder.mutationField('createCategory', (t) =>
     args: { input: t.arg({ type: CreateCategoryInput, required: true }) },
     resolve: async (_parent, { input }) => {
       try {
-        const slug     = input.slug ?? slugify(input.name);
+        const name = input.name.trim();
+        if (!name) {
+          throw new GraphQLError('Category name cannot be empty.');
+        }
+
+        const slug = (input.slug?.trim() || slugify(name)).toLowerCase();
+
+        const [existingByName, existingBySlug] = await Promise.all([
+          findCategoryByName(name),
+          findCategoryBySlug(slug),
+        ]);
+
+        if (existingByName || existingBySlug) {
+          throw new GraphQLError('A category with this name or slug already exists.');
+        }
+
         const category = await createCategory({
-          name:        input.name,
+          name,
           slug,
-          description: input.description ?? null,
+          description: input.description?.trim() || null,
         });
         await cacheService.invalidateCategoryCache().catch((err) => {
           logger.warn('Cache invalidation failed after createCategory', { error: err instanceof Error ? err.message : String(err) });
@@ -78,6 +94,14 @@ builder.mutationField('createCategory', (t) =>
         return category;
       } catch (err) {
         if (err instanceof GraphQLError || err instanceof ApiError) throw err;
+        const isDuplicate =
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code: string }).code === '23505';
+        if (isDuplicate) {
+          throw new GraphQLError('A category with this name or slug already exists.');
+        }
         logger.error('createCategory mutation failed', { error: err instanceof Error ? err.message : String(err) });
         throw new GraphQLError('Failed to create category. Please try again.');
       }
@@ -97,11 +121,12 @@ builder.mutationField('updateCategory', (t) =>
       try {
         const updates: Parameters<typeof updateCategory>[1] = {};
         if (input.name) {
-          updates.name = input.name;
-          if (!input.slug) updates.slug = slugify(input.name);
+          const trimmedName = input.name.trim();
+          updates.name = trimmedName;
+          if (!input.slug) updates.slug = slugify(trimmedName);
         }
-        if (input.slug)                    updates.slug        = input.slug;
-        if (input.description !== undefined) updates.description = input.description ?? null;
+        if (input.slug)                    updates.slug        = input.slug.trim().toLowerCase();
+        if (input.description !== undefined) updates.description = input.description?.trim() || null;
 
         const category = await updateCategory(id, updates);
         if (!category) throw new GraphQLError('Category not found.');
@@ -111,6 +136,14 @@ builder.mutationField('updateCategory', (t) =>
         return category;
       } catch (err) {
         if (err instanceof GraphQLError || err instanceof ApiError) throw err;
+        const isDuplicate =
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code: string }).code === '23505';
+        if (isDuplicate) {
+          throw new GraphQLError('A category with this name or slug already exists.');
+        }
         logger.error('updateCategory mutation failed', { categoryId: id, error: err instanceof Error ? err.message : String(err) });
         throw new GraphQLError('Failed to update category. Please try again.');
       }
