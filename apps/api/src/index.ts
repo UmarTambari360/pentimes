@@ -86,10 +86,10 @@ app.get('/health', async (_req, res) => {
   });
 });
 
-// ── File uploads ──────────────────────────────────────────────────
+// ── File uploads 
 app.use('/upload', uploadRouter);
 
-// ── GraphQL ───────────────────────────────────────────────────────
+// ── GraphQL 
 const yoga = createYoga<{ req: express.Request; res: express.Response }>({
   schema,
   context: createContext,
@@ -107,11 +107,11 @@ const yoga = createYoga<{ req: express.Request; res: express.Response }>({
 });
 
 app.use('/graphql', (req, res) => yoga(req, res));
-// ── Error handler (must be last) ─────────────────────────────────
+// ── Error handler (must be last) 
 app.use(errorHandler);
 app.use((_req, res) => res.status(404).json({ error: 'Not Found' }));
 
-// ── Server startup ────────────────────────────────────────────────
+// ── Server startup 
 const server = app.listen(env.API_PORT, () => {
   log('info', 'server_started', {
     graphql:  `http://localhost:${env.API_PORT}/graphql`,
