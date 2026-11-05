@@ -17,6 +17,26 @@ import { Label } from "@/components/ui/label";
 import type { CategoryType } from "@/types";
 import { getAuthClient } from "@/lib/graphql/browser-client";
 
+function getRequestErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = error.response;
+    if (typeof response === "object" && response !== null) {
+      if ("errors" in response && Array.isArray(response.errors)) {
+        const message = response.errors.find(
+          (entry): entry is { message: string } =>
+            typeof entry === "object" && entry !== null &&
+            "message" in entry && typeof entry.message === "string",
+        )?.message;
+        if (message) return message;
+      }
+      if ("status" in response && typeof response.status === "number") {
+        return `${fallback} (HTTP ${response.status})`;
+      }
+    }
+  }
+  return fallback;
+}
+
 const CategorySchema = z.object({
   name: z.string().min(2, "At least 2 characters").max(100),
   description: z.string().max(500).optional(),
@@ -53,8 +73,8 @@ export function CategoriesManager({
       setCategories((prev) => [...prev, result.createCategory]);
       toast.success("Category created!");
       reset();
-    } catch {
-      toast.error("Failed to create category");
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error, "Failed to create category"));
     } finally {
       setSaving(false);
     }
